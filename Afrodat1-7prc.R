@@ -1,6 +1,6 @@
 #--------
-#----Afrodatae wave 1-7の処理例  読み込んで欠損値をNA(Rでの欠損値)として国別集計､回帰分析
-#----2019/11/6 hamaoka@fbc.keio.ac.jp
+#----Afrodatae wave 1-7を読み込んだデータを使って各種処理
+#----2019/12/10 hamaoka@fbc.keio.ac.jp
 #--------
 #Rについては例えば　濱岡の下記ページ参照
 #　http://news.fbc.keio.ac.jp/~hamaoka/cgi-bin/fswiki/wiki.cgi?page=R　
