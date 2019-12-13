@@ -1,2 +1,2 @@
-# afrobarometer
-analysis of afrobarometer data
+# AfrobarometeR
+Rcode for analysis of Afrobarometer data.
