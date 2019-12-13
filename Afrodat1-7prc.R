@@ -19,6 +19,7 @@ setwd("/Users/yh/Dropbox/Files2019/研究2019/AfroData")
 
 load("0Afrodat.img");ls()
 
+#Afrodat1-Afrodat7　やそれらの共通の変数をまとめたAfrodatAllなどが入っている
 
 #データ
 #http://afrobarometer.org/data/merged-data
