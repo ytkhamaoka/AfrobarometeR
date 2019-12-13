@@ -1,5 +1,5 @@
 #--------
-#----Afrodatae wave 7の処理例  読み込んで欠損値をNA(Rでの欠損値)として国別集計､回帰分析
+#----Afrodatae wave 1-7の処理例  読み込んで欠損値をNA(Rでの欠損値)として国別集計､回帰分析
 #----2019/11/6 hamaoka@fbc.keio.ac.jp
 #--------
 #Rについては例えば　濱岡の下記ページ参照
@@ -68,6 +68,44 @@ mean2<-function(x){
 	return(m)
 	}
 
+max2<-function(x){
+	m<-max(x,na.rm=T)
+	return(m)
+	}
+
+min2<-function(x){
+	m<-min(x,na.rm=T)
+	return(m)
+	}
+
+
+#-------------------------------
+dwaw.line2<-function(dat){		#datの中にあるtを横軸､yを縦軸にとってプロット｡左端に国記号　dat$t:year, dat$y, dat$cnam: country name
+	d<-dim(dat)[1]
+	lines(dat$t,dat$y)
+		text(dat$t[d],dat$y[d],dat$cnam[d],pos=4,cex=0.5)		#最後のtのところにcountry nameを
+	}
+
+#datの中にあるcnam毎にトレンドをプロット
+group_trend_plot<-function(dat,lab){
+par(mfrow=c(1,1))
+	ymin<-min2(dat$y)
+	ymax<-max2(dat$y)
+	tmax<-max2(dat$t)
+	tmin<-min2(dat$t)
+	plot(dat$t,dat$y,xlim=c(tmin,tmax),ylim=c(ymin,ymax),main=lab,xlab="Year",ylab="Mean")
+		by(dat,dat$cnam,dwaw.line2)
+	}
+
+
+#----------1列目に国記号､行方向に各国(の平均)がはいったデータについて、国別に折れ線グラフを作成
+plot.by.group<-function(x, ...){
+	#x<-as.data.frame(m)
+	plot(x[1,-1],type="l")#,...)
+	par(srt=90,adj=0)
+	text(x[1,1],x[,1],cex=2)
+	for (i in seq(2,dim(x)[1])) {lines(x[i,],col=i)}
+}
 
 
 #---------------
@@ -86,13 +124,15 @@ table(Afrodat1$country)
 (lb<-names(attributes(Afrodat1$country)$labels))
 # [1] "Botswana"     "Ghana"        "Lesotho"      "Malawi"       "Mali"         "Namibia"      "Nigeria"      "South Africa" "Tanzania"     "Uganda"      
 #[11] "Zambia"       "Zimbabwe"    
-lb[8]<-"SFA"	# "South Africa"はSFA
+lb[4]<-"MLW"	#Malawi	他のwaveと統一
+lb[5]<-"MLI"	#Mali	他のwaveと統一
+lb[8]<-"SAF"	# "South Africa"はSAF
 	(lb<-substr(toupper(lb),1,3))	#大文字にしてはじめの3文字
 
 Afrodat1$COUNTRY2<-lb[Afrodat1$country]	#こちらに入っている
 	table(Afrodat1$COUNTRY2)
 
-# BOT  GHA  LES  MAL  NAM  NIG  SFA  TAN  UGA  ZAM  ZIM 
+# BOT  GHA  LES  MAL  NAM  NIG  SAF  TAN  UGA  ZAM  ZIM 
 #1200 2004 1177 3297 1183 3603 2200 2198 2271 1198 1200 
 
 
@@ -130,10 +170,6 @@ table(Afrodat1$COUNTRY2,Afrodat1$News_Radio,exclude=NULL)
 table(Afrodat1$COUNTRY2,Afrodat1$News_Television,exclude=NULL)
 
 
-
-
-
-
 #保存
 save(Afrodat1,file=“0Afrodat1.rda”)
 
@@ -156,6 +192,10 @@ Afrodat2$COUNTRY2<-substr(Afrodat2$respno,1,3)	#はじめの3文字が国名
 #1200 1250   18 1200 2398 1200 1283 1400 1200 1199 2428 2400 1200 1223 2400 1198 1104 
 
 Afrodat2$COUNTRY2[Afrodat2$COUNTRY2=="cve"]<-"CVE"	#大文字に
+Afrodat2$COUNTRY2[Afrodat2$COUNTRY2=="TNZ"]<-"TAN"	#他のwaveと統一
+Afrodat2$COUNTRY2[Afrodat2$COUNTRY2=="MWI"]<-"MLW"	#他のwaveと統一
+
+
 #これを使って欠損値処理
 Afrodat2$News_Radio<-repNA04(Afrodat2$q26a)
 Afrodat2$News_Television<-repNA04(Afrodat2$q26b)
@@ -183,6 +223,7 @@ Afrodat3$COUNTRY2<-substr(Afrodat3$respno,1,3)	#はじめの3文字が国名
 # BEN  BOT  CVE  GHA  KEN  LES  MAD  MLI  MOZ  MWI  NAM  NIG  SAF  SEN  TAN  UGA  ZAM  ZIM 
 #1198 1200 1256 1197 1278 1161 1350 1244 1198 1200 1200 2363 2400 1200 1304 2400 1200 1048 
 #これを使って欠損値処理
+Afrodat3$COUNTRY2[Afrodat3$COUNTRY2=="MWI"]<-"MLW"	#他のwaveと統一
 
 Afrodat3$News_Radio<-repNA04(Afrodat3$q15a)
 Afrodat3$News_Television<-repNA04(Afrodat3$q15b)
@@ -240,6 +281,8 @@ Afrodat5$COUNTRY2<-substr(Afrodat5$RESPNO,1,3)	#はじめの3文字が国名
 #1204 1200 1200 1200 1200 1200 1200 1208 1190 2400 1200 2399 1197 1199 1200 1200 1200 2407 2400 1196 1200 1199 2400 2399 1200 1190 1199 1200 2400 1200 1200 
 # UGA  ZAM  ZIM 
 #2400 1200 2400 
+Afrodat5$COUNTRY2[Afrodat5$COUNTRY2=="MRC"]<-"MOR"	#他のwaveと統一
+
 #これを使って欠損値処理
 Afrodat5$News_Radio<-repNA04(Afrodat5$Q13A)
 Afrodat5$News_Television<-repNA04(Afrodat5$Q13B)
@@ -287,9 +330,51 @@ Afrodat6$Age<-ifelse(Afrodat6$Q1<0|Afrodat6$Q1>105|Afrodat6$Q1==98,NA,Afrodat6$Q
 #Question: Which language is your home language?
 #Variable Label: Q2. Language of respondent
 #Values: 1-35, 101- 107, 141-149, 180- 197, 220-221, 260- 278, 300-315, 340-342, 381-396, 420-421,460-471, 502- 518, 540-553, 581-591, 621- 653, 660-668, 702-710, 740-800, 820- 872, 900, 930- 943, 1100-1105, 1141- 1160, 1180, 1220 -1282, 1300-1305, 1420, 1460,1501,1540,1541,1620,1621,1660,1661,1662, 1700-1707, 2200-2222, 2740-2748, 9998-9999"
+#Value Labels: -1 =Missing, 1 =English, 2 =French, 3 =Portuguese, 4 =Swahili, 5 =Arabic, 6 =Adja, 7 =Afrikaans, 8 =Arabe, 9 =Bambara, 10 =Bassa, 11
 
 Afrodat6$Language<-ifelse(Afrodat6$Q2<0|Afrodat6$Q2>=9998,NA,Afrodat6$Q2)
-	table(Afrodat6$Language,exclude=NULL)
+table(Afrodat6$Language,exclude=NULL)
+
+	d<-data.frame(table(Afrodat6$Language,exclude=NULL))
+	d[order(d[,2],decreasing=T),]
+#    Var1 Freq
+#5      5 2199
+#3      3 1400
+#117  463 1258	Chichewa
+#64   260 1210	Akan
+#425 9995 1206	Other
+#396 1460 1198	Egyptian Arabic
+#62   220 1195	Crioulo
+#333 1180 1192	Kirund
+#96   340 1182	Sesotho
+#398 1540 1179	Sudanese Arabic
+#303  900 1166	Creole
+#400 1620 1166	siSwati
+#294  861 1156	Shona
+#395 1420 1108	Algerian Arabic
+#
+
+Afrodat6$dlang_English<-ifelse(Afrodat6$Language==1,1,0)
+Afrodat6$dlang_French<-ifelse(Afrodat6$Language==2,1,0)
+Afrodat6$dlang_Portuguese<-ifelse(Afrodat6$Language==3,1,0)
+Afrodat6$dlang_Swahili<-ifelse(Afrodat6$Language==4,1,0)
+Afrodat6$dlang_Arabic<-ifelse(Afrodat6$Language==5,1,0)
+Afrodat6$dlang_Swahili<-ifelse(Afrodat6$Language==6,1,0)
+Afrodat6$dlang_Afrikaans<-ifelse(Afrodat6$Language==7,1,0)
+
+Afrodat6$dlang_Chichewa<-ifelse(Afrodat6$Language==463,1,0)
+Afrodat6$dlang_Akan<-ifelse(Afrodat6$Language==260,1,0)
+Afrodat6$dlang_Other<-ifelse(Afrodat6$Language==9995,1,0)
+Afrodat6$dlang_Egyptian_Arabic<-ifelse(Afrodat6$Language==1460,1,0)
+Afrodat6$dlang_Crioulo<-ifelse(Afrodat6$Language==220,1,0)
+Afrodat6$dlang_Kirund<-ifelse(Afrodat6$Language==1180,1,0)
+Afrodat6$dlang_Sesotho<-ifelse(Afrodat6$Language==340,1,0)
+Afrodat6$dlang_Sudanese_Arabic<-ifelse(Afrodat6$Language==1540,1,0)
+Afrodat6$dlang_Creole<-ifelse(Afrodat6$Language==900,1,0)
+Afrodat6$dlang_siSwati<-ifelse(Afrodat6$Language==1620,1,0)
+Afrodat6$dlang_Shona<-ifelse(Afrodat6$Language==861,1,0)
+Afrodat6$dlang_Algerian_Arabic<-ifelse(Afrodat6$Language==1420,1,0)
+
 
 #"Question Number: Q4A
 #Question: In general, how would you describe: The present economic condition of this country?
@@ -327,7 +412,6 @@ Afrodat6$gone_water<-repNA04(Afrodat6$Q8B)
 Afrodat6$gone_med<-repNA04(Afrodat6$Q8C)
 Afrodat6$gone_fuel<-repNA04(Afrodat6$Q8D)
 Afrodat6$gone_cash<-repNA04(Afrodat6$Q8E)
-
 
 # news source
 #"Question Number: Q12A 
@@ -590,6 +674,23 @@ Afrodat6$Occupation<-ifelse(Afrodat6$Q96A<0|Afrodat6$Q96A>95,NA,Afrodat6$Q96A)
 #   0     1     2     3     4     5     6     7     8     9    10    11    12    95  <NA> 
 # 5953  5344  5540 12375  4864  2195  4850  4074   947   660   931  3080  1150  1766   206 
 
+
+Afrodat6$dOccupation_Never<-ifelse(Afrodat6$Occupation==0,1,0)
+Afrodat6$dOccupation_Student<-ifelse(Afrodat6$Occupation==1,1,0)
+Afrodat6$dOccupation_Housewife_homemaker<-ifelse(Afrodat6$Occupation==2,1,0)
+Afrodat6$dOccupation_primary<-ifelse(Afrodat6$Occupation==3,1,0)
+Afrodat6$dOccupation_Trader<-ifelse(Afrodat6$Occupation==4,1,0)
+Afrodat6$dOccupation_Retail<-ifelse(Afrodat6$Occupation==5,1,0)
+Afrodat6$dOccupation_Unskilled<-ifelse(Afrodat6$Occupation==6,1,0)
+Afrodat6$dOccupation_skilled<-ifelse(Afrodat6$Occupation==7,1,0)
+Afrodat6$dOccupation_Clerical<-ifelse(Afrodat6$Occupation==8,1,0)
+Afrodat6$dOccupation_Supervisor<-ifelse(Afrodat6$Occupation==9,1,0)
+Afrodat6$dOccupation_police<-ifelse(Afrodat6$Occupation==10,1,0)
+Afrodat6$dOccupation_Mid_level<-ifelse(Afrodat6$Occupation==11,1,0)
+Afrodat6$dOccupation_Upper_level<-ifelse(Afrodat6$Occupation==12,1,0)
+Afrodat6$dOccupation_Other<-ifelse(Afrodat6$Occupation==95,1,0)
+
+
 #----学歴
 #Question Number: Q97
 #Question: What is your highest level of education?
@@ -629,13 +730,13 @@ Afrodat6$Race<-ifelse(Afrodat6$Q102<0|Afrodat6$Q102>95,NA,Afrodat6$Q102)
 #    1     2     3     4     5     6    95  <NA> 
 #45981   361  1094  4856  1031     8   572    32 
 #人種ダミー
-Afrodat6$fgRace_BAf<-ifelse(Afrodat6$Race==1,1,0)
-Afrodat6$fgRace_Wh<-ifelse(Afrodat6$Race==2,1,0)
-Afrodat6$fgRace_Col<-ifelse(Afrodat6$Race==3,1,0)
-Afrodat6$fgRace_Arab<-ifelse(Afrodat6$Race==4,1,0)
-Afrodat6$fgRace_SAs<-ifelse(Afrodat6$Race==5,1,0)
-Afrodat6$fgRace_EAs<-ifelse(Afrodat6$Race==6,1,0)
-Afrodat6$fgRace_Oth<-ifelse(Afrodat6$Race==95,1,0)
+Afrodat6$dRace_BAf<-ifelse(Afrodat6$Race==1,1,0)
+Afrodat6$dRace_Wh<-ifelse(Afrodat6$Race==2,1,0)
+Afrodat6$dRace_Col<-ifelse(Afrodat6$Race==3,1,0)
+Afrodat6$dRace_Arab<-ifelse(Afrodat6$Race==4,1,0)
+Afrodat6$dRace_SAs<-ifelse(Afrodat6$Race==5,1,0)
+Afrodat6$dRace_EAs<-ifelse(Afrodat6$Race==6,1,0)
+Afrodat6$dRace_Oth<-ifelse(Afrodat6$Race==95,1,0)
 
 
 
@@ -651,17 +752,10 @@ as.data.frame(m)
 #edit(as.data.frame(m))
 
 	
-plot(m[,-1])
-
-plot(m[,1:2],type="l")
-
 #edit(m)
 write.table(m,file="0m.txt",row.names=F,sep="\t")
 
-
-res<-glm(Own_TV~Age+Gender_f+Education+as.factor(Employment_status)+as.factor(Race)+as.factor(Occupation)+Mem_religious+Mem_voluntary+gone_food+gone_cash+as.factor(Language)+COUNTRY2,family="binomial",data=Afrodat6)
-	summary(res)
-
+#plot.by.group(m)
 
 #---------------
 #			7
@@ -707,13 +801,32 @@ save(Afrodat7,file=“0Afrodat7.rda”)
 
 #------全ラウンド必要部分をまとめる　　とりあえずニュースの利用
 v<-c("wave","year","COUNTRY2","News_Radio","News_Television","News_Newspaper","News_Internet","News_Social_media")
-AfrodatAll<-rbind(Afrodat1[,v],Afrodat2[,v],Afrodat3[,v],Afrodat4[,v],Afrodat5[,v],Afrodat6[,v])
+AfrodatAll<-rbind(Afrodat1[,v],Afrodat2[,v],Afrodat3[,v],Afrodat4[,v],Afrodat5[,v],Afrodat6[,v],Afrodat7[,v])
 	dim(AfrodatAll)	#[1] 204464      8
 
+table(AfrodatAll$COUNTRY2,AfrodatAll$wave,exclude=NULL)
 #AfrodatAllg<-group_by(AfrodatAll,c("year","COUNTRY2"))
 AfrodatAllg<-group_by(AfrodatAll, AfrodatAll$COUNTRY2,AfrodatAll$year)	#国､年別に集計することを指定
 
 (m<-summarise(AfrodatAllg,mNews_Radio<-mean2(News_Radio),mNews_Television<-mean2(News_Television),mNews_Newspaper<-mean2(News_Newspaper),mNews_Internet<-mean2(News_Internet),mNews_Social_media<-mean2(News_Social_media)))
 
 edit(m)
+head(m)
+#Radio
+dat<-m[,c(1:3)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="Radio")
+dat<-m[,c(1:2,4)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="TV")
 
+dat<-m[,c(1:2,5)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="Newspaper")
+
+dat<-m[,c(1:2,6)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="Internet")
+
+dat<-m[,c(1:2,7)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="Social_media ")
+
+
+
+save.image("0Afrodat.img")
