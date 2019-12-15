@@ -311,7 +311,43 @@ Afrodat6$COUNTRY2<-substr(Afrodat6$RESPNO,1,3)	#はじめの3文字が国名
 # ALG  BDI  BEN  BFO  BOT  CAM  CDI  CVE  EGY  GAB  GHA  GUI  KEN  LES  LIB  MAD  MAU  MLI  MLW  MOR  MOZ  NAM  NGR  NIG  SAF  SEN  SRL  STP  SUD  SWZ  TAN  TOG  TUN  UGA  ZAM  ZIM 
 #1200 1200 1200 1200 1200 1182 1199 1200 1198 1198 2400 1200 2397 1200 1199 1200 1200 1200 2400 1200 2400 1200 1200 2400 2390 1200 1191 1196 1200 1200 2386 1200 1200 2400 1199 2400 
 
+Afrodat6$dCOUNTRY_ALG<-ifelse(Afrodat6$COUNTRY2=="ALG",1,0)	#すべてについてダミーを定義したので使うときはどれかを除く
+Afrodat6$dCOUNTRY_BDI<-ifelse(Afrodat6$COUNTRY2=="BDI",1,0)
+Afrodat6$dCOUNTRY_BFO<-ifelse(Afrodat6$COUNTRY2=="BFO",1,0)
+Afrodat6$dCOUNTRY_CAM<-ifelse(Afrodat6$COUNTRY2=="CAM",1,0)
+Afrodat6$dCOUNTRY_CDI<-ifelse(Afrodat6$COUNTRY2=="CDI",1,0)
+Afrodat6$dCOUNTRY_EGY<-ifelse(Afrodat6$COUNTRY2=="EGY",1,0)
+Afrodat6$dCOUNTRY_GAB<-ifelse(Afrodat6$COUNTRY2=="GAB",1,0)
+Afrodat6$dCOUNTRY_GHA<-ifelse(Afrodat6$COUNTRY2=="GHA",1,0)
+Afrodat6$dCOUNTRY_GUI<-ifelse(Afrodat6$COUNTRY2=="GUI",1,0)
+Afrodat6$dCOUNTRY_KEN<-ifelse(Afrodat6$COUNTRY2=="KEN",1,0)
+Afrodat6$dCOUNTRY_LES<-ifelse(Afrodat6$COUNTRY2=="LES",1,0)
+Afrodat6$dCOUNTRY_LIB<-ifelse(Afrodat6$COUNTRY2=="LIB",1,0)
+Afrodat6$dCOUNTRY_MAD<-ifelse(Afrodat6$COUNTRY2=="MAD",1,0)
+Afrodat6$dCOUNTRY_MAU<-ifelse(Afrodat6$COUNTRY2=="MAU",1,0)
+Afrodat6$dCOUNTRY_MLI<-ifelse(Afrodat6$COUNTRY2=="MLI",1,0)
+Afrodat6$dCOUNTRY_MLW<-ifelse(Afrodat6$COUNTRY2=="MLW",1,0)
+Afrodat6$dCOUNTRY_MOR<-ifelse(Afrodat6$COUNTRY2=="MOR",1,0)
+Afrodat6$dCOUNTRY_MOZ<-ifelse(Afrodat6$COUNTRY2=="MOZ",1,0)
+Afrodat6$dCOUNTRY_NAM<-ifelse(Afrodat6$COUNTRY2=="NAM",1,0)
+Afrodat6$dCOUNTRY_NGR<-ifelse(Afrodat6$COUNTRY2=="NGR",1,0)
+Afrodat6$dCOUNTRY_NIG<-ifelse(Afrodat6$COUNTRY2=="NIG",1,0)
+Afrodat6$dCOUNTRY_SAF<-ifelse(Afrodat6$COUNTRY2=="SAF",1,0)
+Afrodat6$dCOUNTRY_SEN<-ifelse(Afrodat6$COUNTRY2=="SEN",1,0)
+Afrodat6$dCOUNTRY_SRL<-ifelse(Afrodat6$COUNTRY2=="SRL",1,0)
+Afrodat6$dCOUNTRY_STP<-ifelse(Afrodat6$COUNTRY2=="STP",1,0)
+Afrodat6$dCOUNTRY_SUD<-ifelse(Afrodat6$COUNTRY2=="SUD",1,0)
+Afrodat6$dCOUNTRY_SWZ<-ifelse(Afrodat6$COUNTRY2=="SWZ",1,0)
+Afrodat6$dCOUNTRY_TAN<-ifelse(Afrodat6$COUNTRY2=="TAN",1,0)
+Afrodat6$dCOUNTRY_TOG<-ifelse(Afrodat6$COUNTRY2=="TOG",1,0)
+Afrodat6$dCOUNTRY_TUN<-ifelse(Afrodat6$COUNTRY2=="TUN",1,0)
+Afrodat6$dCOUNTRY_UGA<-ifelse(Afrodat6$COUNTRY2=="UGA",1,0)
+Afrodat6$dCOUNTRY_ZAM<-ifelse(Afrodat6$COUNTRY2=="ZAM",1,0)
+Afrodat6$dCOUNTRY_ZIM<-ifelse(Afrodat6$COUNTRY2=="ZIM",1,0)
+
+
 #これを使って欠損値処理
+
 
 
 #    0     1  <NA> 

@@ -124,7 +124,9 @@ as.data.frame(m)
 
 
 #big
-res<-glm(Own_TV~Age+Gender_f+Education+as.factor(Employment_status)+as.factor(Race)+as.factor(Occupation)+Mem_religious+Mem_voluntary+gone_food+gone_cash+as.factor(Language)+COUNTRY2,family="binomial",data=Afrodat6)
+res<-glm(Own_TV~Age+Gender_f+Education+as.factor(Employment_status)+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dOccupation_Never+dOccupation_Student+dOccupation_Housewife_homemaker+dOccupation_primary+dOccupation_Trader+dOccupation_Retail+dOccupation_Unskilled+dOccupation_skilled+dOccupation_Clerical+dOccupation_Supervisor+dOccupation_police+dOccupation_Mid_level+dOccupation_Upper_level+	#dOccupation_Other +
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs+dRace_Oth +Mem_religious+Mem_voluntary+gone_food+gone_cash+COUNTRY2,family="binomial",data=Afrodat6)
 	summary(res)
 
 
