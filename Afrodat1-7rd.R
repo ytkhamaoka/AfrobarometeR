@@ -360,7 +360,7 @@ Afrodat6$dCOUNTRY_ZIM<-ifelse(Afrodat6$COUNTRY2=="ZIM",1,0)
 #Values: 18-105, 998-999, -1
 #Value Labels: 98=Refused to answer, 999=Don’t know, -1=Missing
 Afrodat6$Age<-ifelse(Afrodat6$Q1<0|Afrodat6$Q1>105|Afrodat6$Q1==98,NA,Afrodat6$Q1)
-	table(Afrodat6$Employment_status,exclude=NULL)
+	table(Afrodat6$Age,exclude=NULL)
 
 #"Question Number: Q2
 #Question: Which language is your home language?
@@ -696,6 +696,11 @@ Afrodat6$Use_Inet <-repNA04(Afrodat6$Q92B)
 #Source: SAB
 Afrodat6$Employment_status<-ifelse(Afrodat6$Q95<0|Afrodat6$Q95>3,NA,Afrodat6$Q95)
 	table(Afrodat6$Employment_status,exclude=NULL)
+
+Afrodat6$dEmployment_status_no<-ifelse(Afrodat6$Employment_status==0,1,0)
+Afrodat6$dEmployment_status_looking<-ifelse(Afrodat6$Employment_status==1,1,0)
+Afrodat6$dEmployment_status_part_time<-ifelse(Afrodat6$Employment_status==2,1,0)
+Afrodat6$dEmployment_status_full_time<-ifelse(Afrodat6$Employment_status==3,1,0)
 
 #----職業
 #Question Number: Q96A
