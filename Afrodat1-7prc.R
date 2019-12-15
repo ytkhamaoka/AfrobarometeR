@@ -123,16 +123,44 @@ as.data.frame(m)
 #"dRace_BAf"                       "dRace_Wh"                        "dRace_Col"                       "dRace_Arab"                      "dRace_SAs"                       "dRace_EAs"                       "dRace_Oth"                      
 
 
-#big
-res<-glm(Own_TV~Age+Gender_f+Education+as.factor(Employment_status)+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
-dOccupation_Never+dOccupation_Student+dOccupation_Housewife_homemaker+dOccupation_primary+dOccupation_Trader+dOccupation_Retail+dOccupation_Unskilled+dOccupation_skilled+dOccupation_Clerical+dOccupation_Supervisor+dOccupation_police+dOccupation_Mid_level+dOccupation_Upper_level+	#dOccupation_Other +
-dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs+dRace_Oth +Mem_religious+Mem_voluntary+gone_food+gone_cash+COUNTRY2,family="binomial",data=Afrodat6)
-	summary(res)
-
-
+#単純にfactorだと変数が多い
 res<-glm(Own_TV~Age+Gender_f+Education+as.factor(Employment_status)+as.factor(Race)+as.factor(Occupation)+Mem_religious+Mem_voluntary+gone_food+gone_cash+as.factor(Language)+COUNTRY2,family="binomial",data=Afrodat6)
 	summary(res)
 
+#ダミー変数で
+v<-as.formula('~Age+Gender_f+Education+
+dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
+dOccupation_Never+dOccupation_Student+dOccupation_Housewife_homemaker+dOccupation_primary+dOccupation_Trader+dOccupation_Retail+dOccupation_Unskilled+dOccupation_skilled+dOccupation_Clerical+dOccupation_Supervisor+dOccupation_police+dOccupation_Mid_level+dOccupation_Upper_level+	
+Mem_religious+Mem_voluntary+
+gone_food+gone_cash+
+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
+dCOUNTRY_ALG+dCOUNTRY_BDI+dCOUNTRY_BFO+dCOUNTRY_CAM+dCOUNTRY_CDI+dCOUNTRY_EGY+dCOUNTRY_GAB+dCOUNTRY_GHA+dCOUNTRY_GUI+dCOUNTRY_KEN+dCOUNTRY_LES+dCOUNTRY_LIB+dCOUNTRY_MAD+dCOUNTRY_MAU+dCOUNTRY_MLI+dCOUNTRY_MLW+dCOUNTRY_MOR+dCOUNTRY_MOZ+dCOUNTRY_NAM+dCOUNTRY_NGR+dCOUNTRY_NIG+dCOUNTRY_SAF+dCOUNTRY_SEN+dCOUNTRY_SRL+dCOUNTRY_STP+dCOUNTRY_SUD+dCOUNTRY_SWZ+dCOUNTRY_TAN+dCOUNTRY_TOG+dCOUNTRY_TUN+dCOUNTRY_UGA+dCOUNTRY_ZAM')
+##dOccupation_Other +dRace_Oth 
+
+cor(Afrodat6[,c("Own_Auto","Own_Mbphone","Own_Radio","Own_TV","News_Radio","News_Television","News_Internet","News_Social_media")],use="complete")
+
+res_oAuto<-glm(formula(paste("Own_Auto~",v,sep="")[2]),family="binomial",data=Afrodat6)
+	summary(res_oAuto)
+res_oMbphone<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family="binomial",data=Afrodat6)
+	summary(res_oMbphone)
+
+res_oRadio<-glm(formula(paste("Own_Radio~",v,sep="")[2]),family="binomial",data=Afrodat6)
+	summary(res_oRadio)
+res_nRadio<-lm(formula(paste("News_Radio~",v,sep="")[2]),data=Afrodat6)
+	summary(res_nRadio)
+
+res_oTelevision<-glm(formula(paste("Own_TV~",v,sep="")[2]),family="binomial",data=Afrodat6)
+	summary(res_oTelevision)
+res_nTelevision<-lm(formula(paste("News_Television~",v,sep="")[2]),data=Afrodat6)
+	summary(res_nTelevision)
+
+res_nInternet<-lm(formula(paste("News_Internet~",v,sep="")[2]),data=Afrodat6)
+	summary(res_nInternet)
+res_nSocial_media<-lm(formula(paste("News_Social_media~",v,sep="")[2]),data=Afrodat6)
+	summary(res_nSocial_media)
+
+mtable(res_oAuto,res_oMbphone,res_oRadio,res_nRadio,res_oTelevision,res_nTelevision,res_nInternet,res_nSocial_media)
 
 
 
