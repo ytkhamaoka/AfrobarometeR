@@ -6,12 +6,14 @@
 #　http://news.fbc.keio.ac.jp/~hamaoka/cgi-bin/fswiki/wiki.cgi?page=R　
 
 
-#install.packages(c("dplyr","haven","memisc","biglm"))	#としてインストールしておく
+#install.packages(c("dplyr","haven","memisc","biglm","nlme"))	#としてインストールしておく
 options(width=150)
 library(dplyr)	#国別集計用
 library(haven)	#SPSSデータ読み込み
 library(memisc)	#lmの出力整形
 library(biglm)	#bigdata lm,glm
+library(nlme)	#multi-level
+library(lattice)	#lattice plot
 
 #ファイルのあるディレクトリ指定　　自分のAfroデータのあるところに変更  下記を書き換えるか､Rのメニューで指定
 setwd("/Users/yh/Dropbox/Files2019/研究2019/AfroData")
@@ -268,6 +270,7 @@ ucl4<-kmeans(Afrodat6[d,c("News_Radio","News_Television","News_Internet","News_S
 	ucl4$size
 	ucl4$centers
 
+cor(Afrodat6[d,c("News_Radio","News_Television","News_Internet","News_Social_media")])
 ucl5<-kmeans(Afrodat6[d,c("News_Radio","News_Television","News_Internet","News_Social_media")],5)
 data.frame(ucl5$centers,ucl5$size)
 #  News_Radio News_Television News_Internet News_Social_media ucl5.size
@@ -286,6 +289,16 @@ names(dat)<-c("own","usage")
 				
 	table(dat$own,dat$usage2,exclude=NULL)
 	table2(dat$own,dat$usage2,exclude=NULL)
+#     1    2    3    4    5   %     N
+#1 60.6 27.3  8.8  1.4  1.8 100  5890
+#2  7.3 70.8 14.3  4.1  3.5 100 13270
+#3 19.5 10.7 36.3 14.4 19.2 100 21421
+#4 12.5  9.5 65.5  8.0  4.5 100  1244
+#5  9.1 14.0 33.1 17.1 26.7 100 10671
+#  18.8 28.4 27.7 10.7 14.5 100 52496
+
+
+
 
 
 #multivariate probit  #処理遅いので
@@ -344,10 +357,99 @@ table(AfrodatAll$COUNTRY2,AfrodatAll$wave,exclude=NULL)
 #AfrodatAllg<-group_by(AfrodatAll,c("year","COUNTRY2"))
 AfrodatAllg<-group_by(AfrodatAll, AfrodatAll$COUNTRY2,AfrodatAll$year)	#国､年別に集計することを指定
 
-(m<-summarise(AfrodatAllg,mNews_Radio<-mean2(News_Radio),mNews_Television<-mean2(News_Television),mNews_Newspaper<-mean2(News_Newspaper),mNews_Internet<-mean2(News_Internet),mNews_Social_media<-mean2(News_Social_media)))
-
+(m<-as.data.frame(summarise(AfrodatAllg,mNews_Radio<-mean2(News_Radio),mNews_Television<-mean2(News_Television),mNews_Newspaper<-mean2(News_Newspaper),mNews_Internet<-mean2(News_Internet),mNews_Social_media<-mean2(News_Social_media))))
+names(m)<-c("COUNTRY2","year","mNews_Radio","mNews_Television","mNews_Newspaper","mNews_Internet","mNews_Social_media")
 edit(m)
 
+m2<-m
+	dd<-rep(NA,dim(m)[2])
+m2<-rbind(dd,m2)		#1行下にずらす
+m2<-m2[-dim(m2)[1],]	#最後の行は除く
+	edit(m2)
+names(m2)<-paste("l",names(m2),sep="_")
+m2<-cbind(m,m2)
+
+m2$l_COUNTRY2[1]<-""	#NAだと次の処理がエラーになるので
+m2[m2$COUNTRY2!=m2$l_COUNTRY2,c("l_COUNTRY2","l_year","l_mNews_Radio","l_mNews_Television","l_mNews_Newspaper","l_mNews_Internet","l_mNews_Social_media")]<-NA
+	edit(m2)
+
+dim(AfrodatAll)
+AfrodatAll2<-merge(AfrodatAll,m2,by=c("COUNTRY2","year"))	#各国の平均をつける
+dim(AfrodatAll2)
+names(AfrodatAll2)
+	save(AfrodatAll2,file="0AfrodatAll2.rda")
+
+
+#-------
+a<-xyplot(News_Radio~year|COUNTRY2,data=AfrodatAll,
+           panel=function(x,y){
+                      panel.xyplot(x,y)
+                      panel.abline(lsfit(x,y))
+					  }
+		)
+
+b<-xyplot(News_Television~year|COUNTRY2,data=AfrodatAll,
+           panel=function(x,y){
+                      panel.xyplot(x,y)
+                      panel.abline(lsfit(x,y))
+					  }
+		)
+
+
+plot(a+b)
+
+
+#----
+a<-xyplot(mNews_Radio~year|COUNTRY2,data=m2,
+           panel=function(x,y){
+                      panel.xyplot(x,y)
+                      panel.abline(lsfit(x,y))
+					  }
+		)
+
+b<-xyplot(mNews_Television~year|COUNTRY2,data=m2,
+           panel=function(x,y){
+                      panel.xyplot(x,y)
+                      panel.abline(lsfit(x,y))
+					  }
+		)
+
+
+plot(a+b)
+
+
+
+#国による違いの有無
+res0<-lme(mNews_Radio~1,random=~1|COUNTRY2,data=AfrodatAll2)
+	summary(res0)
+	VarCorr(res0)
+#        AIC       BIC   logLik
+#  -65863.42 -65832.12 32934.71
+#            Variance   StdDev   
+#(Intercept) 0.19136549 0.4374534　　国による違いのVarが大きい
+#Residual    0.04493447 0.2119775
+
+
+res1<-update(res0,.~.+year)	#時間に比例､ランダム切片
+	summary(res1)
+#        AIC       BIC   logLik
+#  -133062.1 -133020.4 66535.04
+#               Value Std.Error     DF   t-value p-value
+#(Intercept) 42.56237 0.15894351 250249  267.7830       0
+#year        -0.01980 0.00007129 250249 -277.6865       0
+
+res2<-update(res1,.~.,random=~year|COUNTRY2)	#傾きランダム
+	summary(res2)
+#        AIC     BIC   logLik
+#  -286796.6 -286734 143404.3
+#               Value Std.Error     DF   t-value p-value
+#(Intercept) 52.79823  36.52757 250249  1.445435  0.1483
+#year        -0.02487   0.01814 250249 -1.371302  0.1703
+
+res2c<-update(res2,.~.,correlation=corAR1())	#系列相関
+	summary(res2c)
+#Error: 'sumLenSq := sum(table(groups)^2)' = 2.37085e+09 is too large.
+# Too large or no groups in your correlation structure?
 
 #-------------------------------
 dwaw.line2<-function(dat){		#datの中にあるtを横軸､yを縦軸にとってプロット｡左端に国記号　dat$t:year, dat$y, dat$cnam: country name
@@ -382,6 +484,9 @@ dat<-m[,c(1:2,6)];names(dat)<-c("cnam","t","y")
 
 dat<-m[,c(1:2,7)];names(dat)<-c("cnam","t","y")
 	group_trend_plot(dat,lab="Social_media ")
+
+
+#-------
 
 
 
