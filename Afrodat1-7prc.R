@@ -6,7 +6,7 @@
 #　http://news.fbc.keio.ac.jp/~hamaoka/cgi-bin/fswiki/wiki.cgi?page=R　
 
 
-#install.packages(c("dplyr","haven","memisc","biglm","nlme"))	#としてインストールしておく
+#install.packages(c("dplyr","haven","memisc","biglm","nlme","ICC"))	#としてインストールしておく
 options(width=150)
 library(dplyr)	#国別集計用
 library(haven)	#SPSSデータ読み込み
@@ -14,6 +14,7 @@ library(memisc)	#lmの出力整形
 library(biglm)	#bigdata lm,glm
 library(nlme)	#multi-level
 library(lattice)	#lattice plot
+library(ICC)	#級内相関
 
 #ファイルのあるディレクトリ指定　　自分のAfroデータのあるところに変更  下記を書き換えるか､Rのメニューで指定
 setwd("/Users/yh/Dropbox/Files2019/研究2019/AfroData")
@@ -418,22 +419,29 @@ b<-xyplot(mNews_Television~year|COUNTRY2,data=m2,
 plot(a+b)
 
 
+library(ICC)
+ICCest(as.factor(COUNTRY2),News_Radio,data=AfrodatAll2[AfrodatAll2$wave==1,],alpha=0.05,CI.type="Smith")
+#[1] 0.0517132と低いが
 
-#国による違いの有無
-res0<-lme(mNews_Radio~1,random=~1|COUNTRY2,data=AfrodatAll2)
+
+#国による違いの有無､
+res0<-lme(News_Radio~1,random=~1|COUNTRY2,na.action=na.omit,data=AfrodatAll2)
 	summary(res0)
 	VarCorr(res0)
 #        AIC       BIC   logLik
-#  -65863.42 -65832.12 32934.71
+#  884816.3 884847.6 -442405.2
+
+#(Intercept) 2.735488 0.07191879 250250 38.0358       0
+
 #            Variance   StdDev   
-#(Intercept) 0.19136549 0.4374534　　国による違いのVarが大きい
-#Residual    0.04493447 0.2119775
+#(Intercept) 0.1909259 0.4369507
+#Residual    2.0192435 1.4210009
 
 
 res1<-update(res0,.~.+year)	#時間に比例､ランダム切片
 	summary(res1)
 #        AIC       BIC   logLik
-#  -133062.1 -133020.4 66535.04
+#  883515.7 883557.4 -441753.9
 #               Value Std.Error     DF   t-value p-value
 #(Intercept) 42.56237 0.15894351 250249  267.7830       0
 #year        -0.01980 0.00007129 250249 -277.6865       0
@@ -441,15 +449,50 @@ res1<-update(res0,.~.+year)	#時間に比例､ランダム切片
 res2<-update(res1,.~.,random=~year|COUNTRY2)	#傾きランダム
 	summary(res2)
 #        AIC     BIC   logLik
-#  -286796.6 -286734 143404.3
+#  883515.1 883577.7 -441751.6
 #               Value Std.Error     DF   t-value p-value
-#(Intercept) 52.79823  36.52757 250249  1.445435  0.1483
-#year        -0.02487   0.01814 250249 -1.371302  0.1703
+#(Intercept) 42.76453 1.0962271 249800  39.01065       0
+#year        -0.01990 0.0005459 249800 -36.44408       0
 
-res2c<-update(res2,.~.,correlation=corAR1())	#系列相関
+res2c<-update(res2,.~.,correlation=corAR1())	#系列相関 このデータは個人が同一ではないのでできない
 	summary(res2c)
 #Error: 'sumLenSq := sum(table(groups)^2)' = 2.37085e+09 is too large.
 # Too large or no groups in your correlation structure?
+
+res2.1<-update(res2,.~.+l_mNews_Radio+News_Television,random=~year|COUNTRY2)	
+	summary(res2.1)
+
+
+#--TV
+res0tv<-update(res0,News_Television~.)
+	summary(res0tv)
+#       AIC      BIC    logLik
+#  915710.2 915741.5 -457852.1
+
+res1tv<-update(res1,News_Television~.)
+	summary(res1tv)
+#       AIC      BIC    logLik
+#  914765.4 914807.1 -457378.7
+#                Value Std.Error     DF   t-value p-value
+#(Intercept) -35.67483 1.2268400 247074 -29.07863       0
+#year          0.01874 0.0006042 247074  31.01131       0
+
+res2tv<-update(res2,News_Television~.)
+	summary(res2tv)
+#       AIC      BIC    logLik
+#  914766.6 914829.1 -457377.3
+
+
+#メディア間の比較
+dat<-m2[m2$COUNTRY2=="MLW",]
+plot(dat$year,dat$mNews_Radio,type="l",xlim=c(2000,2018),ylim=c(0.5,4),ylab="Usage as News Source")
+	lines(dat$year,dat$mNews_Television,type="l",col="Red")
+	lines(dat$year,dat$mNews_Newspaper,type="l",col="Purple")
+	lines(dat$year,dat$mNews_Internet,type="l",col="Blue")
+	lines(dat$year,dat$mNews_Social_media,type="l",col="Green")
+	legend("topleft",c(dat$COUNTRY2[1],"Radio","TV","Newspaper","Internet","Social_media"),text.col=c("Black","Black","Red","Purple","Blue","Green"))
+
+
 
 #-------------------------------
 dwaw.line2<-function(dat){		#datの中にあるtを横軸､yを縦軸にとってプロット｡左端に国記号　dat$t:year, dat$y, dat$cnam: country name
