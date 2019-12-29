@@ -15,6 +15,8 @@ library(biglm)	#bigdata lm,glm
 library(nlme)	#multi-level
 library(lattice)	#lattice plot
 library(ICC)	#級内相関
+library(lavaan)	
+library(semTools)	
 
 #ファイルのあるディレクトリ指定　　自分のAfroデータのあるところに変更  下記を書き換えるか､Rのメニューで指定
 setwd("/Users/yh/Dropbox/Files2019/研究2019/AfroData")
@@ -204,11 +206,11 @@ v<-as.formula('~gone_food+gone_cash+
 Mem_religious+Mem_voluntary+
 Age+Gender_f+Education+
 dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
-dOccupation_Never+dOccupation_Student+dOccupation_Housewife_homemaker+dOccupation_primary+dOccupation_Trader+dOccupation_Retail+dOccupation_Unskilled+dOccupation_skilled+dOccupation_Clerical+dOccupation_Supervisor+dOccupation_police+dOccupation_Mid_level+dOccupation_Upper_level+	
+dOccupation_Student+dOccupation_Housewife_homemaker+dOccupation_primary+dOccupation_Trader+dOccupation_Retail+dOccupation_Unskilled+dOccupation_skilled+dOccupation_Clerical+dOccupation_Supervisor+dOccupation_police+dOccupation_Mid_level+dOccupation_Upper_level+	
 dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
 dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
 dCOUNTRY_ALG+dCOUNTRY_BDI+dCOUNTRY_BFO+dCOUNTRY_CAM+dCOUNTRY_CDI+dCOUNTRY_EGY+dCOUNTRY_GAB+dCOUNTRY_GHA+dCOUNTRY_GUI+dCOUNTRY_KEN+dCOUNTRY_LES+dCOUNTRY_LIB+dCOUNTRY_MAD+dCOUNTRY_MAU+dCOUNTRY_MLI+dCOUNTRY_MLW+dCOUNTRY_MOR+dCOUNTRY_MOZ+dCOUNTRY_NAM+dCOUNTRY_NGR+dCOUNTRY_NIG+dCOUNTRY_SAF+dCOUNTRY_SEN+dCOUNTRY_SRL+dCOUNTRY_STP+dCOUNTRY_SUD+dCOUNTRY_SWZ+dCOUNTRY_TAN+dCOUNTRY_TOG+dCOUNTRY_TUN+dCOUNTRY_UGA+dCOUNTRY_ZAM')
-##dOccupation_Other +dRace_Oth 
+##dOccupation_Never+ dOccupation_Other +dRace_Oth 
 
 
 
@@ -235,7 +237,264 @@ res_nSocial_media<-lm(formula(paste("News_Social_media~",v,sep="")[2]),data=Afro
 mtable(res_oAuto,res_oMbphone,res_oRadio,res_nRadio,res_oTelevision,res_nTelevision,res_nInternet,res_nSocial_media)
 
 
-#保有状況でクラスタ
+#---
+cor(dat<-Afrodat6[,c("gone_food","gone_water","gone_med","gone_cash","gone_fuel","Electric_connection","Mem_religious","Mem_voluntary","Cit_action_Attend_meeting","Cit_action_raise_issue","Ele_campaign_rally","Ele_campaign_meeting","Ele_Attend_persuade","Ele_Attend_Work")],use="complete")
+
+factanal(dat[complete.cases(dat),],2,rotation="promax")
+factanal(dat[complete.cases(dat),],3,rotation="promax")
+factanal(dat[complete.cases(dat),],4,rotation="promax")
+factanal(dat[complete.cases(dat),],5,rotation="promax")
+
+#                          Factor1 Factor2 Factor3 Factor4 Factor5
+#gone_food                  0.637                          -0.132 
+#gone_water                 0.657                                 
+#gone_med                   0.742                                 
+#gone_cash                  0.594                          -0.280 
+#gone_fuel                  0.679                           0.171 
+#Electric_connection       -0.132                           0.547 
+#Mem_religious                                      0.555  -0.106 
+#Mem_voluntary                                      0.583         
+#Cit_action_Attend_meeting                  0.822                 
+#Cit_action_raise_issue                     0.753                 
+#Ele_campaign_rally                 0.658                  -0.116 
+#Ele_campaign_meeting               0.773                         
+#Ele_Attend_persuade                0.638                         
+#Ele_Attend_Work                    0.664                         
+#
+#               Factor1 Factor2 Factor3 Factor4 Factor5
+#SS loadings      2.225   1.882   1.268   0.689   0.474
+#Proportion Var   0.159   0.134   0.091   0.049   0.034
+#Cumulative Var   0.159   0.293   0.384   0.433   0.467
+#
+#Factor Correlations:
+#        Factor1 Factor2 Factor3 Factor4 Factor5
+#Factor1   1.000 -0.1270  0.3666  0.5700  0.2879
+#Factor2  -0.127  1.0000 -0.0769 -0.0925 -0.3653
+#Factor3   0.367 -0.0769  1.0000  0.3790  0.0651
+#Factor4   0.570 -0.0925  0.3790  1.0000  0.1447
+#Factor5   0.288 -0.3653  0.0651  0.1447  1.0000
+#
+#Test of the hypothesis that 5 factors are sufficient.
+#The chi square statistic is 2846.64 on 31 degrees of freedom.
+#The p-value is 0 
+
+
+Model.cfa0<- '
+	f1lack_food=~gone_food +gone_water+gone_med+gone_cash+gone_fuel #
+	f2connect_Elec=~Electric_connection #
+	f3community=~Mem_religious+Mem_voluntary #
+	f4action=~Cit_action_Attend_meeting +Cit_action_raise_issue #
+	f5Election=~Ele_campaign_rally +Ele_campaign_meeting+Ele_Attend_persuade+ Ele_Attend_Work#
+	'
+res.cfa0<-lavaan(Model.cfa0, data=Afrodat6,auto.var=TRUE,  auto.fix.first=TRUE,auto.fix.single=T,auto.cov.lv.x=TRUE)
+	summary(res.cfa0, fit.measures=TRUE)		
+	standardizedSolution(res.cfa0, type = "std.all")
+
+#多母集団
+res.cfa0g<-lavaan(Model.cfa0, data=Afrodat6,auto.var=TRUE,  auto.fix.first=TRUE,auto.fix.single=T,auto.cov.lv.x=TRUE,group="COUNTRY2")
+	summary(res.cfa0g, fit.measures=TRUE)		
+#	standardizedSolution(res.cfa0g, type = "std.all")	#時間がかかるのでやめる
+#lavaan 0.6-5 ended normally after 2234 iterations
+#
+#  Estimator                                         ML
+#  Optimization method                           NLMINB
+#  Number of free parameters                       1332
+#                                                      
+#  Number of observations per group:               Used       Total
+#    ALG                                            962        1200
+#    BDI                                            845        1200
+#    BEN                                            862        1200
+#    BFO                                            769        1200
+#    BOT                                            967        1200
+#    CAM                                            743        1182
+#    CDI                                            817        1199
+#    CVE                                           1058        1200
+#    EGY                                           1044        1198
+#    GAB                                            929        1198
+#    GHA                                           2004        2400
+#    GUI                                            750        1200
+#    KEN                                           2140        2397
+#    LES                                            602        1200
+#    LIB                                            884        1199
+#    MAD                                           1030        1200
+#    MAU                                           1132        1200
+#    MLI                                            922        1200
+#    MLW                                            871        2400
+#    MOR                                            995        1200
+#    MOZ                                           1724        2400
+#    NAM                                           1108        1200
+#    NGR                                            886        1200
+#    NIG                                           2020        2400
+#    SAF                                           2153        2390
+#    SEN                                            831        1200
+#    SRL                                            877        1191
+#    STP                                            989        1196
+#    SUD                                            904        1200
+#    SWZ                                            983        1200
+#    TAN                                           1739        2386
+#    TOG                                            771        1200
+#    TUN                                           1078        1200
+#    UGA                                           2011        2400
+#    ZAM                                           1015        1199
+#    ZIM                                           2083        2400
+#                                                                  
+#Model Test User Model:
+#                                                        
+#  Test statistic                              129170.680
+#  Degrees of freedom                                2952
+#  P-value (Chi-square)                             0.000
+#  Test statistic for each group:
+#    ALG                                       3637.671
+#    BDI                                       2853.361
+#    BEN                                       2697.105
+#    BFO                                       2287.498
+#    BOT                                       2645.085
+#    CAM                                       2220.190
+#    CDI                                       2669.851
+#    CVE                                       3377.988
+#    EGY                                       4457.356
+#    GAB                                       3140.012
+#    GHA                                       5091.285
+#    GUI                                       2596.040
+#    KEN                                       5875.835
+#    LES                                       1615.200
+#    LIB                                       2388.104
+#    MAD                                       2671.431
+#    MAU                                       6738.084
+#    MLI                                       2489.523
+#    MLW                                       2665.149
+#    MOR                                       4941.983
+#    MOZ                                       4352.193
+#    NAM                                       2730.346
+#    NGR                                       2770.312
+#    NIG                                       5620.855
+#    SAF                                       6504.080
+#    SEN                                       2660.956
+#    SRL                                       2405.757
+#    STP                                       3083.422
+#    SUD                                       2422.518
+#    SWZ                                       2540.061
+#    TAN                                       4846.536
+#    TOG                                       2686.043
+#    TUN                                       3620.984
+#    UGA                                       5987.098
+#    ZAM                                       2712.112
+#    ZIM                                       7168.656
+#
+#Model Test Baseline Model:
+#
+#  Test statistic                            157501.037
+#  Degrees of freedom                              3276
+#  P-value                                        0.000
+#
+#User Model versus Baseline Model:
+#
+#  Comparative Fit Index (CFI)                    0.182
+#  Tucker-Lewis Index (TLI)                       0.092
+#
+#Loglikelihood and Information Criteria:
+#
+#  Loglikelihood user model (H0)            -659189.336
+#  Loglikelihood unrestricted model (H1)             NA
+#                                                      
+#  Akaike (AIC)                             1321042.672
+#  Bayesian (BIC)                           1332542.362
+#  Sample-size adjusted Bayesian (BIC)      1328309.258
+#
+#Root Mean Square Error of Approximation:
+#
+#  RMSEA                                          0.193
+#  90 Percent confidence interval - lower         0.192
+#  90 Percent confidence interval - upper         0.193
+#  P-value RMSEA <= 0.05                          0.000
+#
+#Standardized Root Mean Square Residual:
+#
+#  SRMR                                           1.806
+#
+#Parameter Estimates:
+#
+#  Information                                 Expected
+#  Information saturated (h1) model          Structured
+#  Standard errors                             Standard
+
+
+res.cfa0gmi<-measurementInvariance(model=Model.cfa0, data=Afrodat6,group="COUNTRY2")
+
+#Measurement invariance models:#
+#Chi-Squared Difference Test
+#                 Df     AIC     BIC Chisq Chisq diff Df diff Pr(>Chisq)    
+#fit.configural 2448 1205049 1220900 12169                                  
+#fit.loadings   2763 1210476 1223608 18226       6057     315  < 2.2e-16 ***
+#fit.intercepts 3078 1233377 1243789 41758      23531     315  < 2.2e-16 ***
+#fit.means      3253 1272171 1281072 80901      39144     175  < 2.2e-16 ***
+#---
+#Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#Fit measures:
+#                 cfi rmsea cfi.delta rmsea.delta
+#fit.configural 0.937 0.059        NA          NA
+#fit.loadings   0.900 0.070     0.037       0.011
+#fit.intercepts 0.749 0.104     0.151       0.035
+#fit.means      0.497 0.144     0.253       0.039
+
+
+
+#----
+attach(Afrodat6,warn=F)
+Afrodat6$f1lack_food<-(gone_food +gone_water+gone_med+gone_cash+gone_fuel)/5 #
+Afrodat6$f2connect_Elec<-Electric_connection #
+Afrodat6$f3community<-(Mem_religious+Mem_voluntary )/2#
+Afrodat6$f4action<-(Cit_action_Attend_meeting +Cit_action_raise_issue)/2 #
+Afrodat6$f5Election<-(Ele_campaign_rally +Ele_campaign_meeting+Ele_Attend_persuade+ Ele_Attend_Work)/4 	#
+
+	summary(Afrodat6)	#  f4action は　　NA　11373サンプル
+
+#ダミー変数と蒸気で定義した変数で
+v<-as.formula('~f1lack_food+f2connect_Elec+
+f3community+f4action+
+Age+Gender_f+Education+
+dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
+dOccupation_Student+dOccupation_Housewife_homemaker+dOccupation_primary+dOccupation_Trader+dOccupation_Retail+dOccupation_Unskilled+dOccupation_skilled+dOccupation_Clerical+dOccupation_Supervisor+dOccupation_police+dOccupation_Mid_level+dOccupation_Upper_level+	
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dCOUNTRY_ALG+dCOUNTRY_BDI+dCOUNTRY_BFO+dCOUNTRY_CAM+dCOUNTRY_CDI+dCOUNTRY_EGY+dCOUNTRY_GAB+dCOUNTRY_GHA+dCOUNTRY_GUI+dCOUNTRY_KEN+dCOUNTRY_LES+dCOUNTRY_LIB+dCOUNTRY_MAD+dCOUNTRY_MAU+dCOUNTRY_MLI+dCOUNTRY_MLW+dCOUNTRY_MOR+dCOUNTRY_MOZ+dCOUNTRY_NAM+dCOUNTRY_NGR+dCOUNTRY_NIG+dCOUNTRY_SAF+dCOUNTRY_SEN+dCOUNTRY_SRL+dCOUNTRY_STP+dCOUNTRY_SUD+dCOUNTRY_SWZ+dCOUNTRY_TAN+dCOUNTRY_TOG+dCOUNTRY_TUN+dCOUNTRY_UGA+dCOUNTRY_ZAM')
+##dOccupation_Never+ dOccupation_Other +dRace_Oth 
+
+
+
+res_oAuto<-glm(formula(paste("Own_Auto~",v,sep="")[2]),family="binomial",data=Afrodat6)
+	summary(res_oAuto)
+res_oMbphone<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family="binomial",data=Afrodat6)
+	summary(res_oMbphone)
+
+res_oRadio<-glm(formula(paste("Own_Radio~",v,sep="")[2]),family="binomial",data=Afrodat6)
+	summary(res_oRadio)
+res_nRadio<-lm(formula(paste("News_Radio~",v,sep="")[2]),data=Afrodat6)
+	summary(res_nRadio)
+
+res_oTelevision<-glm(formula(paste("Own_TV~",v,sep="")[2]),family="binomial",data=Afrodat6)
+	summary(res_oTelevision)
+res_nTelevision<-lm(formula(paste("News_Television~",v,sep="")[2]),data=Afrodat6)
+	summary(res_nTelevision)
+
+res_nInternet<-lm(formula(paste("News_Internet~",v,sep="")[2]),data=Afrodat6)
+	summary(res_nInternet)
+res_nSocial_media<-lm(formula(paste("News_Social_media~",v,sep="")[2]),data=Afrodat6)
+	summary(res_nSocial_media)
+
+mtable(res_oAuto,res_oMbphone,res_oRadio,res_nRadio,res_oTelevision,res_nTelevision,res_nInternet,res_nSocial_media)
+
+
+
+
+
+
+
+
+
+
+#ーーーーーーー保有状況でクラスタ
 set.seed(12345)
 d<-complete.cases(Afrodat6[,c("Own_Auto","Own_Mbphone","Own_Radio","Own_TV","News_Radio","News_Television","News_Internet","News_Social_media")])
 	sum(d);dim(Afrodat6)[1]	#52496  53935
@@ -382,41 +641,95 @@ names(AfrodatAll2)
 
 
 #-------
-a<-xyplot(News_Radio~year|COUNTRY2,data=AfrodatAll,
-           panel=function(x,y){
-                      panel.xyplot(x,y)
-                      panel.abline(lsfit(x,y))
-					  }
-		)
+#a<-xyplot(News_Radio~year|COUNTRY2,data=AfrodatAll,
+#           panel=function(x,y){
+#                      panel.xyplot(x,y)
+#                      panel.abline(lsfit(x,y))
+#					  }
+#		)
+#
+#b<-xyplot(News_Television~year|COUNTRY2,data=AfrodatAll,
+#           panel=function(x,y){
+#                      panel.xyplot(x,y)
+#                      panel.abline(lsfit(x,y))
+#					  }
+#		)
+#plot(a+b)
 
-b<-xyplot(News_Television~year|COUNTRY2,data=AfrodatAll,
-           panel=function(x,y){
-                      panel.xyplot(x,y)
-                      panel.abline(lsfit(x,y))
-					  }
-		)
 
+#----メディア間の比較 時系列プロット
+plot_media_usage<-function(dat0,country_nam,...){
+#datの中にCOUNTRY2
+dat<-dat0[dat0$COUNTRY2==country_nam,]
+	print(list(country_nam,dim(dat)))
+plot(dat$year,dat$mNews_Radio,type="l",xlim=c(2000,2018),ylim=c(0,4),...)	#ylab="Usage as News Source"
+	lines(dat$year,dat$mNews_Television,type="l",col="Red")
+	lines(dat$year,dat$mNews_Newspaper,type="l",col="Purple")
+	lines(dat$year,dat$mNews_Internet,type="l",col="Blue")
+	lines(dat$year,dat$mNews_Social_media,type="l",col="Green")
+#	legend("topleft",c(dat$COUNTRY2[1],"Radio","TV","Newspaper","Internet","Social_media"),text.col=c("Black","Black","Red","Purple","Blue","Green"))
+	legend("topleft",c(country_nam))	#,"Radio","TV","Newspaper","Internet","Social_media"),text.col=c("Black","Black","Red","Purple","Blue","Green"))
+}
 
-plot(a+b)
+(cnam<-unique(m2$COUNTRY2))
+length(cnam)	#37
+	par(mar=c(0.,0.,0.,0.),mfrow=c(5,8))	#c(0.5,0.5,0.5,0.5)
+	for(i in seq(1,length(cnam))){
+		plot_media_usage(m2,cnam[i],xaxt="n",yaxt="n")	#軸の目盛り消す
+		}
+
+#6wave 以上ある国のみ
+(d<-as.data.frame(table(m2$COUNTRY2)))
+sum(d$Freq>=6)	#[1] 12
+	cnam<-as.character(d[,1])
+	par(mar=c(0.,0.,0.,0.),mfrow=c(4,4))	#c(0.5,0.5,0.5,0.5)
+	jj<-0
+	for(ii in seq(1,length(cnam))){
+		if(d$Freq[ii]>=6){
+			if(jj==1){
+					plot_media_usage(m2,cnam[ii])	#軸の目盛り消さず
+				}else{
+					plot_media_usage(m2,cnam[ii],xaxt="n",yaxt="n")	#軸の目盛り消す
+					}
+		if(jj==1){
+		legend("bottomleft",c("Radio","TV","Newspaper","Internet","Social_media"),text.col=c("Black","Red","Purple","Blue","Green"))
+			}
+			jj<-jj+1
+		}
+		}
 
 
 #----
-a<-xyplot(mNews_Radio~year|COUNTRY2,data=m2,
-           panel=function(x,y){
-                      panel.xyplot(x,y)
-                      panel.abline(lsfit(x,y))
-					  }
-		)
+res0<-lme(News_Radio~1,random=~1|COUNTRY2,na.action=na.omit,data=AfrodatAll2)
 
-b<-xyplot(mNews_Television~year|COUNTRY2,data=m2,
-           panel=function(x,y){
-                      panel.xyplot(x,y)
-                      panel.abline(lsfit(x,y))
-					  }
-		)
+AfrodatAll2g<-groupedData(News_Radio~year|COUNTRY2,data=AfrodatAll2)
+	plot(AfrodatAll2g)
+	reslm.g<-lmList(News_Radio~year|COUNTRY2,data=AfrodatAll2,na.action=na.omit)
+	summary(reslm.g)
+	plot(intervals(reslm.g))
 
 
-plot(a+b)
+	dat0<-AfrodatAll2[AfrodatAll2$COUNTRY2=="BEN",]
+	table(dat0$year,dat0$News_Internet,exclude=NULL)	#	2012=wave5		それぞれ測定前については0にしてダミー定義
+	table(dat0$year,dat0$News_Social_media,exclude=NULL)	#2014= wave 6
+		dat0$News_Internet[dat0$year<2012]<-0	
+			dat0$fg.News_Internet<-ifelse(dat0$year<2012,0,1)		
+		dat0$News_Social_media[dat0$year<2014]<-0
+			dat0$fg.News_Social_media<-ifelse(dat0$year<2014,0,1)		
+	
+	d<-complete.cases(dat0[,c("year","News_Radio","News_Television","News_Newspaper","News_Internet","News_Social_media")])
+	dat<-dat0[d,];dim(dat0);dim(dat)
+	summary(dat)
+res<-lm(News_Radio~year,data=dat)
+	summary(res)
+	plot(News_Radio~year,data=dat)
+	lines(res$fitted.values~year,col="red",data=dat)
+
+res2<-lm(News_Radio~year+News_Television+News_Newspaper+News_Internet+News_Social_media+fg.News_Internet+fg.News_Social_media,data=dat)
+	summary(res2)
+	plot(News_Radio~year,data=dat)
+	lines(res2$fitted.values~year,col="red",data=dat)
+
 
 
 library(ICC)
@@ -482,15 +795,6 @@ res2tv<-update(res2,News_Television~.)
 #       AIC      BIC    logLik
 #  914766.6 914829.1 -457377.3
 
-
-#メディア間の比較
-dat<-m2[m2$COUNTRY2=="MLW",]
-plot(dat$year,dat$mNews_Radio,type="l",xlim=c(2000,2018),ylim=c(0.5,4),ylab="Usage as News Source")
-	lines(dat$year,dat$mNews_Television,type="l",col="Red")
-	lines(dat$year,dat$mNews_Newspaper,type="l",col="Purple")
-	lines(dat$year,dat$mNews_Internet,type="l",col="Blue")
-	lines(dat$year,dat$mNews_Social_media,type="l",col="Green")
-	legend("topleft",c(dat$COUNTRY2[1],"Radio","TV","Newspaper","Internet","Social_media"),text.col=c("Black","Black","Red","Purple","Blue","Green"))
 
 
 
