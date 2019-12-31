@@ -5,17 +5,21 @@
 #Rについては例えば　濱岡の下記ページ参照
 #　http://news.fbc.keio.ac.jp/~hamaoka/cgi-bin/fswiki/wiki.cgi?page=R　
 
+options(stringsAsFactors=FALSE)
 
-#install.packages(c("dplyr","haven","memisc"))	#としてインストールしておく
+#install.packages(c("dplyr","haven","memisc","openxlsx","simputation"))	#としてインストールしておく
 options(width=150)
 library(dplyr)	#国別集計用
 library(haven)	#SPSSデータ読み込み
 library(memisc)	#lmの出力整形
+library(openxlsx)
+library(simputation)
 #ファイルのあるディレクトリ指定　　自分のAfroデータのあるところに変更  下記を書き換えるか､Rのメニューで指定
 setwd("/Users/yh/Dropbox/Files2019/研究2019/AfroData")
 #save.image("0Afrodat.img")
 #load("0Afrodat.img");ls()
-
+#unique(AfrodatAll$COUNTRY2)
+#table(AfrodatAll$COUNTRY2)
 
 #データ
 #http://afrobarometer.org/data/merged-data
@@ -26,8 +30,7 @@ setwd("/Users/yh/Dropbox/Files2019/研究2019/AfroData")
 #https://www.afrobarometer.org/data/merged-round-7-data-34-countries-2019
 #　code bookは未公開
 
-
-
+#----------------サブルーチン
 repNA01<-function(x){
 	x[x<0|x>1]<-NA
 	print(table(x,exclude=NULL))
@@ -106,6 +109,297 @@ plot.by.group<-function(x, ...){
 	text(x[1,1],x[,1],cex=2)
 	for (i in seq(2,dim(x)[1])) {lines(x[i,],col=i)}
 }
+
+
+#---World Bankの国データから必要な時点のみ取り出す→すべて使うことにしたので使わない
+toLong0<-function(dat,vnam){
+	#vnam="Population, total"
+	dd<-dat[dat$Series.Name==vnam,c(1,4,5,7,10,13,17,19,20)]
+	names(dd);dim(dd)	#[1] 219  19
+# [1] "Country.Name"  "Country.Code"  "2000.[YR2000]" "2002.[YR2002]" "2005.[YR2005]" "2008.[YR2008]" "2012.[YR2012]" "2014.[YR2014]" "2015.[YR2015]"
+	names(dd)[3:9]<-c("y.2000","y.2002","y.2005","y.2008","y.2012","y.2014","y.2015")
+#	print(head(dd))
+
+	d0<-reshape(dd,direction = "long",varying=c("y.2000","y.2002","y.2005","y.2008","y.2012","y.2014","y.2015"),
+				idvar=c("Country.Name","Country.Code"))	#,timevar=c(2000,2002,2005,2008,2012,2014,2015)
+	vnam2<-strsplit(vnam," (",fixed=T)	# (以降の単位部分は除く
+	vnam2<-gsub(" |,|%","_",vnam2[[1]])	#　,や%､スペースは_に
+	names(d0)[3:4]<-c("year",vnam2)
+		d0[,4]<-as.numeric(d0[,4])	#characterになっているので数値に
+	print(head(d0))
+	return(d0)
+	}
+
+#---World Bankの国データにある時点データをすべてとりだす
+	n_NA<-function(x){
+		sum(is.na(x))
+		}
+
+toLong<-function(dat,vnam){
+	#vnam<-"Population, total";dat<-WBdat
+	dd<-dat[dat$Series.Name==vnam,c(1,2,5,6:35)]
+	names(dd);dim(dd)
+# [1] "WB_Code"       "Afro_Code"     "Country.Name"  "1990.[YR1990]" "1991.[YR1991]" "1992.[YR1992]" "1993.[YR1993]" "1994.[YR1994]" "1995.[YR1995]"
+#[10] "1996.[YR1996]" "1997.[YR1997]" "1998.[YR1998]" "1999.[YR1999]" "2000.[YR2000]" "2001.[YR2001]" "2002.[YR2002]" "2003.[YR2003]" "2004.[YR2004]"
+#[19] "2005.[YR2005]" "2006.[YR2006]" "2007.[YR2007]" "2008.[YR2008]" "2009.[YR2009]" "2010.[YR2010]" "2011.[YR2011]" "2012.[YR2012]" "2013.[YR2013]"
+#[28] "2014.[YR2014]" "2015.[YR2015]" "2016.[YR2016]" "2017.[YR2017]" "2018.[YR2018]" "2019.[YR2019]"
+#[1] 37 33
+
+	names(dd)[4:33]<-paste("y",seq(1990,2019),sep=".")		#変数名 .数字の後からtimeを類推する
+	d0<-reshape(dd,direction = "long",varying=names(dd)[4:33],	
+				idvar=c("Country.Name","WB_Code","Afro_Code"))		#long形式に
+				head(d0)
+#                           WB_Code Afro_Code  Country.Name time        y
+#Burundi.BDI.BDI.1990           BDI       BDI       Burundi 1990  5438957
+#Benin.BEN.BEN.1990             BEN       BEN         Benin 1990  4978496
+#Burkina Faso.BFA.BFO.1990      BFA       BFO  Burkina Faso 1990  8811034
+
+	vnam2<-strsplit(vnam," (",fixed=T)	# (以降の単位部分は除く
+	vnam2<-gsub(" |,|%","_",vnam2[[1]])	#　,や%､スペースは_に
+	names(d0)[4:5]<-c("year",vnam2)
+		d0[,5]<-as.numeric(d0[,5])	#characterになっているので数値に
+#		d0<-d0[order(d0[,c("Country.Name","year")]),]
+	#trend plot
+	dd<-d0[,c(3:5)]
+	names(dd)<-c("cnam","t","y")
+	group_trend_plot(dd,vnam)
+
+	print(by(d0[,5],d0$Country.Name,n_NA))
+	print(head(d0))
+	return(d0)
+	}
+
+#-----yとtをあたえてトレンド推定　　t2について内挿値を算出
+fit_trend<-function(t,y,tnew){
+	#y<-WBdat[WBdat$Country.Name=="Algeria","Access_to_electricity.x"];t<-WBdat[WBdat$Country.Name=="Algeria","year"];tnew<-seq(2000,2018)
+	#y<-WBdat[WBdat$Country.Name=="Algeria","Literacy_rate__adult_total"]
+	#y<-WBdat[WBdat$Country.Name=="Algeria","Income_share_held_by_lowest_20_"]
+	
+	t2<-t^2
+	dt<-data.frame(t,t2,y)
+	dt$no<-seq(1,dim(dt)[1])
+	dt$fg<-complete.cases(dt)
+			print(sum(dt$fg))
+	dt2<-dt[dt$fg,]
+	print(summary(data.frame(t,y)))
+
+	res<-lm(y~t+t2,data=dt2)
+#	res<-lm(y~t,data=dt2)		#2乗を入れると"Algeria","Access_to_electricity.xがおかしくなるので1乗に
+		print(summary(res))
+
+#	tnew2<-tnew^2
+	newdat<-data.frame(tnew,tnew2)
+#	newdat<-data.frame(tnew)
+	names(newdat)<-c("t","t2")
+#	names(newdat)<-c("t")
+	yhat<-predict(res,newdat)
+
+	dtnew<-data.frame(newdat,yhat)
+	(dtnew<-merge(dtnew,dt2[,c("t","y")],by.x="t",by.y="t",all=T))
+	dtnew$y2<-ifelse(is.na(dtnew$y),dtnew$yhat,dtnew$y)	#データがある場合はそれを､欠損の場合は内挿値を
+	dtnew$fg.interpolate<-ifelse(is.na(dtnew$y),1,0)	#データがある場合はそれを､欠損の場合は内挿値を
+	
+	plot(t,y,xlim=c(min(t),max(tnew)),ylim=c(min(y),max(yhat)))
+	lines(tnew,yhat,col="red")
+	return(dtnew[,c("t","y2","fg.interpolate")])	#y2　観測値もしくは内挿値､fg.interpolate=内挿値の場合に1
+	}
+
+
+
+
+#------------------
+#		国コード対応表　
+#		下記からDL　ただし､国名やコードの最後にスペースが入っているので要注意
+#		https://wits.worldbank.org/wits/wits/witshelp/content/codes/country_codes.htm
+#------------------
+Cnam<-read.xlsx("Afro_countryCode.xlsx",sheet=1)
+	names(Cnam);dim(Cnam)	#[1] "Country.Name" "Afro_Code"   [1] 37  2
+dat<-read.xlsx("WBcountry_code.xlsx",sheet=1)
+	names(dat);dim(dat)	#[1] "Country.Name0" "Country.Name"  "WB_Code"       "WB_nCode"    [1] 264   3
+dat<-dat[,2:3]
+
+Cnam<-merge(Cnam,dat,by.x="Country.Name","Country.Name",all=T)
+ names(Cnam)
+#[1] "Country.Name"  "Afro_Code"     "Country.Name0" "WB_Code"       "WB_nCode"   
+Cnam<-Cnam[order(Cnam$Afro_Code),]
+	edit(Cnam)
+#対応できたことがわかったので不要部分を捨てる
+(Cnam<-Cnam[!is.na(Cnam$Afro_Code),])
+	dim(Cnam)	#[1] 37  5
+
+#------------------
+#		国レベルデータ  2000 2002 2005 2008   2012  2014  2015のみを残す  Afroは最新2018だがないので､2015を使う
+#------------------
+#Data from database: World Development Indicators Last Updated: 12/20/2019
+#https://databank.worldbank.org/indicator/NY.GDP.MKTP.KD.ZG/1ff4a498/Popular-Indicators
+#にいくつか加えた   データは1990年からに
+
+dat0<-read.xlsx("WBPopular Indicators2.xlsx",sheet=1)	#, stringsAsFactors=FALSE
+	summary(dat0)
+	head(dat0)
+	names(dat0);dim(dat0)	#[1] 11937    201		Country.CodeがWBの国略号3文字
+# [1] "Series.Name"   "Series.Code"   "Country.Name"  "Country.Code"  "1990.[YR1990]" "1991.[YR1991]" "1992.[YR1992]" "1993.[YR1993]" "1994.[YR1994]"
+#[10] "1995.[YR1995]" "1996.[YR1996]" "1997.[YR1997]" "1998.[YR1998]" "1999.[YR1999]" "2000.[YR2000]" "2001.[YR2001]" "2002.[YR2002]" "2003.[YR2003]"
+#[19] "2004.[YR2004]" "2005.[YR2005]" "2006.[YR2006]" "2007.[YR2007]" "2008.[YR2008]" "2009.[YR2009]" "2010.[YR2010]" "2011.[YR2011]" "2012.[YR2012]"
+#[28] "2013.[YR2013]" "2014.[YR2014]" "2015.[YR2015]" "2016.[YR2016]" "2017.[YR2017]" "2018.[YR2018]" "2019.[YR2019]"
+#[1] 13456    34
+	unique(dat0$Country.Code)
+	unique(dat0$Country.Name)
+
+#コード対応表とマージして対象国のみに
+WBdat<-merge(Cnam[,c( "Afro_Code","WB_Code")],dat0,by.x="WB_Code",by.y="Country.Code",all=T)
+	dim(WBdat[is.na(WBdat$Afro_Code),])
+	WBdat<-WBdat[!is.na(WBdat$Afro_Code),]
+	unique(WBdat$WB_Code)
+	length(unique(WBdat$WB_Code))
+	unique(WBdat$Afro_Code)		#37ヵ国
+	length(unique(WBdat$Afro_Code))
+head(WBdat)
+	names(WBdat);dim(WBdat)
+edit(WBdat)
+# [1] "WB_Code"       "Afro_Code"     "Series.Name"   "Series.Code"   "Country.Name"  "1990.[YR1990]" "1991.[YR1991]" "1992.[YR1992]" "1993.[YR1993]"
+#[10] "1994.[YR1994]" "1995.[YR1995]" "1996.[YR1996]" "1997.[YR1997]" "1998.[YR1998]" "1999.[YR1999]" "2000.[YR2000]" "2001.[YR2001]" "2002.[YR2002]"
+#[19] "2003.[YR2003]" "2004.[YR2004]" "2005.[YR2005]" "2006.[YR2006]" "2007.[YR2007]" "2008.[YR2008]" "2009.[YR2009]" "2010.[YR2010]" "2011.[YR2011]"
+#[28] "2012.[YR2012]" "2013.[YR2013]" "2014.[YR2014]" "2015.[YR2015]" "2016.[YR2016]" "2017.[YR2017]" "2018.[YR2018]" "2019.[YR2019]"
+#[1] 2294   35
+
+
+#	基礎
+WBdatL<-toLong(WBdat,"Population, total")
+	dd<-toLong(WBdat,"Population growth (annual %)")
+	names(dd)
+#[1] "WB_Code"           "Afro_Code"         "Country.Name"      "year"              "Population_growth"
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"Surface area (sq. km)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+#	GNP　GDP
+	dd<-toLong(WBdat,"GDP (current US$)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"GDP growth (annual %)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"GNI per capita, PPP (current international $)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"GDP per capita (current US$)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+
+#	格差
+	dd<-toLong(WBdat,"Income share held by lowest 20%")		#欠損多い
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"GINI index (World Bank estimate)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+#	教育
+	dd<-toLong(WBdat,"Primary completion rate, total (% of relevant age group)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"School enrollment, secondary (% gross)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"Literacy rate, adult total (% of people ages 15 and above)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+#	インフラ
+	dd<-toLong(WBdat,"Access to electricity (% of population)")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+#通信
+#	dd<-toLong(WBdat,"Fixed telephone subscriptions")
+#		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+#	dd<-toLong(WBdat,"Fixed telephone subscriptions (per 100 people)")
+#		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"Internet users (per 100 people)")
+		WBdatL<-merge(WBdatL,dd[,-1],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"Individuals using the Internet (% of population)")
+		WBdatL<-merge(WBdatL,dd[,-1],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+	dd<-toLong(WBdat,"Mobile cellular subscriptions")
+		WBdatL<-merge(WBdatL,dd[,-c(1,2)],by.x=c("Country.Name","year"),by.y=c("Country.Name","year"))
+
+	summary(WBdatL)
+	head(WBdatL)
+	names(WBdatL);dim(WBdatL)
+	edit(WBdatL)
+
+
+#----------		cnam毎にyの欠損値を線形モデルで補完
+t0<-WBdatL$year
+cnam<-WBdatL$Country.Name
+	clist<-unique(cnam)
+
+for(jj in seq(5,dim(WBdatL)[2])){	#変数についてループ
+	#jj<-5
+	y0<-WBdatL[,jj]
+	(vnam2<-paste(names(WBdatL)[jj],"2",sep=""))
+	print(names(WBdatL[jj]))
+
+
+	jpeg(file=paste(vnam2,".jpeg",sep=""),width = 960, height = 480)
+	par(mfrow=c(5,8),mar=c(0,0,0,0))
+
+	dd<-data.frame(cnam,y0,t0)
+
+		for(ii in seq(1,length(clist))){	#国についてループ
+		#ii<-1	
+			print(cl<-clist[ii])
+			dd2<-dd[dd$cnam==clist[ii],]
+			
+			if(sum(!is.na(dd2$y0))==0){
+					print(list("**********No Data",clist[ii],vnam2))
+					}else{
+						ydat0<-fit_trend(dd2$t0,dd2$y0,tnew=seq(2000,2018))	#y0の欠損を線形補完しつつ　2018までも外挿
+						legend("topleft",cl)
+						ydat0$cnam<-cl
+							if(ii==1) {
+							ydat_all<-ydat0
+							}else{
+							ydat_all<-rbind(ydat_all,ydat0)
+							}
+					}
+			}
+#      t       y2 fg.interpolate       cnam
+#1  2000 45.68376              1 Mozambique
+#2  2001 46.34044              1 Mozambique
+			names(ydat_all)[1]<-"year"
+			names(ydat_all)[2]<-vnam2
+			names(ydat_all)[3]<-paste(vnam2,"fg.interpolat",sep=".")
+			names(ydat_all)[4]<-"Country.Name"
+			dev.off()
+			x<- readline(list(vnam2,"waiting for pushing a key"))
+
+	if(jj==5) {
+		WBdatL2<-ydat_all
+			}else{
+		WBdatL2<-merge(WBdatL2,ydat_all,by.x=c("Country.Name","year"),by.y=c("Country.Name","year"),all=T)
+			}
+	}
+	
+	summary(WBdatL2)
+	head(WBdatL2)
+	names(WBdatL2);	dim(WBdatL2)
+
+edit(WBdatL2)
+	
+names(WBdatL);dim(WBdatL)
+names(WBdatL2);dim(WBdatL2)
+
+WBdatL<-merge(WBdatL,WBdatL2,by.x=c("Country.Name","year"),by.y=c("Country.Name","year"),all=T)
+summary(WBdatL)
+	names(WBdatL);dim(WBdatL)
+#[1] "Country.Name"                                   "year"                                          
+# [3] "WB_Code"                                        "Afro_Code"                                     
+# [5] "Population__total"                              "Population_growth"                             
+# [7] "Income_share_held_by_lowest_20_"                "GDP"                                           
+# [9] "GDP_growth"                                     "Literacy_rate__adult_total"                    
+#[11] "Access_to_electricity"                          "Mobile_cellular_subscriptions"                 
+#[13] "Population__total2"                             "Population__total2.fg.interpolat"              
+#[15] "Population_growth2"                             "Population_growth2.fg.interpolat"              
+#[17] "Income_share_held_by_lowest_20_2"               "Income_share_held_by_lowest_20_2.fg.interpolat"
+#[19] "GDP2"                                           "GDP2.fg.interpolat"                            
+#[21] "GDP_growth2"                                    "GDP_growth2.fg.interpolat"                     
+#[23] "Literacy_rate__adult_total2"                    "Literacy_rate__adult_total2.fg.interpolat"     
+#[25] "Access_to_electricity2"                         "Access_to_electricity2.fg.interpolat"          
+#[27] "Mobile_cellular_subscriptions2"                 "Mobile_cellular_subscriptions2.fg.interpolat"  
+#[1] 703  28
+save(WBdatL,file="0WBdatL.rda")
+
+
+
+
+
 
 
 #---------------
@@ -311,43 +605,7 @@ Afrodat6$COUNTRY2<-substr(Afrodat6$RESPNO,1,3)	#はじめの3文字が国名
 # ALG  BDI  BEN  BFO  BOT  CAM  CDI  CVE  EGY  GAB  GHA  GUI  KEN  LES  LIB  MAD  MAU  MLI  MLW  MOR  MOZ  NAM  NGR  NIG  SAF  SEN  SRL  STP  SUD  SWZ  TAN  TOG  TUN  UGA  ZAM  ZIM 
 #1200 1200 1200 1200 1200 1182 1199 1200 1198 1198 2400 1200 2397 1200 1199 1200 1200 1200 2400 1200 2400 1200 1200 2400 2390 1200 1191 1196 1200 1200 2386 1200 1200 2400 1199 2400 
 
-Afrodat6$dCOUNTRY_ALG<-ifelse(Afrodat6$COUNTRY2=="ALG",1,0)	#すべてについてダミーを定義したので使うときはどれかを除く
-Afrodat6$dCOUNTRY_BDI<-ifelse(Afrodat6$COUNTRY2=="BDI",1,0)
-Afrodat6$dCOUNTRY_BFO<-ifelse(Afrodat6$COUNTRY2=="BFO",1,0)
-Afrodat6$dCOUNTRY_CAM<-ifelse(Afrodat6$COUNTRY2=="CAM",1,0)
-Afrodat6$dCOUNTRY_CDI<-ifelse(Afrodat6$COUNTRY2=="CDI",1,0)
-Afrodat6$dCOUNTRY_EGY<-ifelse(Afrodat6$COUNTRY2=="EGY",1,0)
-Afrodat6$dCOUNTRY_GAB<-ifelse(Afrodat6$COUNTRY2=="GAB",1,0)
-Afrodat6$dCOUNTRY_GHA<-ifelse(Afrodat6$COUNTRY2=="GHA",1,0)
-Afrodat6$dCOUNTRY_GUI<-ifelse(Afrodat6$COUNTRY2=="GUI",1,0)
-Afrodat6$dCOUNTRY_KEN<-ifelse(Afrodat6$COUNTRY2=="KEN",1,0)
-Afrodat6$dCOUNTRY_LES<-ifelse(Afrodat6$COUNTRY2=="LES",1,0)
-Afrodat6$dCOUNTRY_LIB<-ifelse(Afrodat6$COUNTRY2=="LIB",1,0)
-Afrodat6$dCOUNTRY_MAD<-ifelse(Afrodat6$COUNTRY2=="MAD",1,0)
-Afrodat6$dCOUNTRY_MAU<-ifelse(Afrodat6$COUNTRY2=="MAU",1,0)
-Afrodat6$dCOUNTRY_MLI<-ifelse(Afrodat6$COUNTRY2=="MLI",1,0)
-Afrodat6$dCOUNTRY_MLW<-ifelse(Afrodat6$COUNTRY2=="MLW",1,0)
-Afrodat6$dCOUNTRY_MOR<-ifelse(Afrodat6$COUNTRY2=="MOR",1,0)
-Afrodat6$dCOUNTRY_MOZ<-ifelse(Afrodat6$COUNTRY2=="MOZ",1,0)
-Afrodat6$dCOUNTRY_NAM<-ifelse(Afrodat6$COUNTRY2=="NAM",1,0)
-Afrodat6$dCOUNTRY_NGR<-ifelse(Afrodat6$COUNTRY2=="NGR",1,0)
-Afrodat6$dCOUNTRY_NIG<-ifelse(Afrodat6$COUNTRY2=="NIG",1,0)
-Afrodat6$dCOUNTRY_SAF<-ifelse(Afrodat6$COUNTRY2=="SAF",1,0)
-Afrodat6$dCOUNTRY_SEN<-ifelse(Afrodat6$COUNTRY2=="SEN",1,0)
-Afrodat6$dCOUNTRY_SRL<-ifelse(Afrodat6$COUNTRY2=="SRL",1,0)
-Afrodat6$dCOUNTRY_STP<-ifelse(Afrodat6$COUNTRY2=="STP",1,0)
-Afrodat6$dCOUNTRY_SUD<-ifelse(Afrodat6$COUNTRY2=="SUD",1,0)
-Afrodat6$dCOUNTRY_SWZ<-ifelse(Afrodat6$COUNTRY2=="SWZ",1,0)
-Afrodat6$dCOUNTRY_TAN<-ifelse(Afrodat6$COUNTRY2=="TAN",1,0)
-Afrodat6$dCOUNTRY_TOG<-ifelse(Afrodat6$COUNTRY2=="TOG",1,0)
-Afrodat6$dCOUNTRY_TUN<-ifelse(Afrodat6$COUNTRY2=="TUN",1,0)
-Afrodat6$dCOUNTRY_UGA<-ifelse(Afrodat6$COUNTRY2=="UGA",1,0)
-Afrodat6$dCOUNTRY_ZAM<-ifelse(Afrodat6$COUNTRY2=="ZAM",1,0)
-Afrodat6$dCOUNTRY_ZIM<-ifelse(Afrodat6$COUNTRY2=="ZIM",1,0)
-
-
 #これを使って欠損値処理
-
 
 
 #    0     1  <NA> 
@@ -360,7 +618,7 @@ Afrodat6$dCOUNTRY_ZIM<-ifelse(Afrodat6$COUNTRY2=="ZIM",1,0)
 #Values: 18-105, 998-999, -1
 #Value Labels: 98=Refused to answer, 999=Don’t know, -1=Missing
 Afrodat6$Age<-ifelse(Afrodat6$Q1<0|Afrodat6$Q1>105|Afrodat6$Q1==98,NA,Afrodat6$Q1)
-	table(Afrodat6$Age,exclude=NULL)
+	table(Afrodat6$Employment_status,exclude=NULL)
 
 #"Question Number: Q2
 #Question: Which language is your home language?
@@ -696,11 +954,6 @@ Afrodat6$Use_Inet <-repNA04(Afrodat6$Q92B)
 #Source: SAB
 Afrodat6$Employment_status<-ifelse(Afrodat6$Q95<0|Afrodat6$Q95>3,NA,Afrodat6$Q95)
 	table(Afrodat6$Employment_status,exclude=NULL)
-
-Afrodat6$dEmployment_status_no<-ifelse(Afrodat6$Employment_status==0,1,0)
-Afrodat6$dEmployment_status_looking<-ifelse(Afrodat6$Employment_status==1,1,0)
-Afrodat6$dEmployment_status_part_time<-ifelse(Afrodat6$Employment_status==2,1,0)
-Afrodat6$dEmployment_status_full_time<-ifelse(Afrodat6$Employment_status==3,1,0)
 
 #----職業
 #Question Number: Q96A
