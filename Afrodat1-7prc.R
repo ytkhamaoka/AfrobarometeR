@@ -6,7 +6,7 @@
 #　http://news.fbc.keio.ac.jp/~hamaoka/cgi-bin/fswiki/wiki.cgi?page=R　
 
 
-#install.packages(c("dplyr","haven","memisc","biglm","nlme","ICC"))	#としてインストールしておく
+#install.packages(c("dplyr","haven","memisc","biglm","nlme","ICC","lavaan","semTools","biglm"))	#としてインストールしておく
 options(width=150)
 library(dplyr)	#国別集計用
 library(haven)	#SPSSデータ読み込み
@@ -17,12 +17,13 @@ library(lattice)	#lattice plot
 library(ICC)	#級内相関
 library(lavaan)	
 library(semTools)	
+library(biglm)
 
 #ファイルのあるディレクトリ指定　　自分のAfroデータのあるところに変更  下記を書き換えるか､Rのメニューで指定
 setwd("/Users/yh/Dropbox/Files2019/研究2019/AfroData")
 #save.image("0Afrodat.img")
 
-load("0Afrodat.img");ls()
+#load("0Afrodat.img");ls()
 
 #Afrodat1-Afrodat7　やそれらの共通の変数をまとめたAfrodatAllなどが入っている
 
@@ -35,41 +36,6 @@ load("0Afrodat.img");ls()
 #https://www.afrobarometer.org/data/merged-round-7-data-34-countries-2019
 #　code bookは未公開
 
-
-
-repNA01<-function(x){
-	x[x<0|x>1]<-NA
-	print(table(x,exclude=NULL))
-	return(x)
-	}
-repNA02<-function(x){
-	x[x<0|x>2]<-NA
-	print(table(x,exclude=NULL))
-	return(x)
-	}
-repNA03<-function(x){
-	x[x<0|x>3]<-NA
-	print(table(x,exclude=NULL))
-	return(x)
-	}
-#0-4　以外をNAに　
-repNA04<-function(x){
-	x[x<0|x>4]<-NA
-	print(table(x,exclude=NULL))
-	return(x)
-	}
-repNA05<-function(x){
-	x[x<0|x>5]<-NA
-	print(table(x,exclude=NULL))
-	return(x)
-	}
-
-#0-1　以外をNAに　
-repNA01<-function(x){
-	x[x<0|x>1]<-NA
-	print(table(x,exclude=NULL))
-	return(x)
-	}
 
 #NAを除いて平均計算
 mean2<-function(x){
@@ -87,7 +53,12 @@ min2<-function(x){
 	return(m)
 	}
 
-#
+# naの数をカウント
+sum.NA<-function(x){
+	m<-sum(is.na(x))
+	return(m)
+	}
+
 table2<-function(x1,x2,...){ 
 	st<-table(x1,x2,...) 
 	Ic<-matrix(1,nrow(st),1) 
@@ -135,6 +106,7 @@ dwaw.line2<-function(dat){		#datの中にあるtを横軸､yを縦軸にとっ�
 	d<-dim(dat)[1]
 	lines(dat$t,dat$y)
 		text(dat$t[d],dat$y[d],dat$cnam[d],pos=4,cex=0.5)		#最後のtのところにcountry nameを
+		print(dat[,c("t","y","cnam")])		#最後のtのところにcountry nameを
 	}
 
 #datの中にあるcnam毎にトレンドをプロット
@@ -144,7 +116,7 @@ par(mfrow=c(1,1))
 	ymax<-max2(dat$y)
 	tmax<-max2(dat$t)
 	tmin<-min2(dat$t)
-	plot(dat$t,dat$y,xlim=c(tmin,tmax),ylim=c(ymin,ymax),main=lab,xlab="Year",ylab="Mean")
+	plot(dat$t,dat$y,xlim=c(tmin,tmax+1),ylim=c(ymin,ymax),main=lab,xlab="Year",ylab="Mean")
 		by(dat,dat$cnam,dwaw.line2)
 	}
 
@@ -152,6 +124,218 @@ head(m)
 #Radio
 #dat<-m[,c(1:3)];names(dat)<-c("cnam","t","y")
 #	group_trend_plot(dat,lab="Radio")
+
+
+
+load(file="0AfrodatAllN.rda");names(AfrodatAllN)	#afro1-7の使う変数データにWbankの国レベルデータ(1次らぐつき)をつけたもの
+
+
+#-----
+#AfrodatAllN		"Own_Radio","Own_TV","Own_Auto","Own_Mbphone",
+AfrodatAllNg<-group_by(AfrodatAllN, AfrodatAllN$COUNTRY2,AfrodatAllN$year)	#国､年別に集計することを指定
+
+#平均値		国別､年別
+(mdat<-summarise(AfrodatAllNg,N=n(),
+mean2(wave),mean2(year),mean2(COUNTRY2),
+mean2(dUrban),mean2(Age),mean2(Gender_f),mean2(Language),mean2(Race),
+mean2(Cond_econ),mean2(Cond_your_liv),mean2(Relative_live),
+mean2(gone_food),mean2(gone_water),mean2(gone_med),mean2(gone_fuel),mean2(gone_cash),mean2(gone_electricity),
+mean2(Interest_pubaff),
+mean2(Discuss_politics),mean2(dDiscuss_politics),
+mean2(Mem_religious),mean2(Mem_voluntary),
+mean2(Cit_action_Attend_meeting),mean2(Cit_action_raise_issue),
+mean2(Diss_request_government),mean2(Diss_Contact_official),mean2(Diss_Attend_demonstration),
+mean2(Democ_pref),mean2(dDemoc_pref),
+mean2(Democ_nation),mean2(Democ_satis),
+mean2(Trust_president),mean2(Trust_parliament),mean2(Trust_police),mean2(Trust_traditional_leaders),mean2(Trust_religious_leaders),
+mean2(Use_Inet),mean2(Use_Mbphone),
+#mean2(Employment_status),
+#mean2(Occupation),
+mean2(Education),
+mNews_Radio=mean2(News_Radio),mNews_Television=mean2(News_Television),mNews_Newspaper=mean2(News_Newspaper),mNews_Internet=mean2(News_Internet),mNews_Social_media=mean2(News_Social_media),
+	mOwn_Radio=mean2(Own_Radio),mOwn_TV=mean2(Own_TV),mOwn_Auto=mean2(Own_Auto),mOwn_Mbphone=mean2(Own_Mbphone)
+))
+
+edit(mdat)
+
+mdat<-as.data.frame(mdat)
+	names(mdat)
+# [1] "AfrodatAllN$COUNTRY2"             "AfrodatAllN$year"                 "N"                                "mean2(wave)"                     
+# [5] "mean2(year)"                      "mean2(COUNTRY2)"                  "mean2(dUrban)"                    "mean2(Age)"                      
+# [9] "mean2(Gender_f)"                  "mean2(Language)"                  "mean2(Race)"                      "mean2(Cond_econ)"                
+#[13] "mean2(Cond_your_liv)"             "mean2(Relative_live)"             "mean2(gone_food)"                 "mean2(gone_water)"               
+#[17] "mean2(gone_med)"                  "mean2(gone_fuel)"                 "mean2(gone_cash)"                 "mean2(gone_electricity)"         
+#[21] "mean2(Interest_pubaff)"           "mean2(Discuss_politics)"          "mean2(dDiscuss_politics)"         "mean2(Mem_religious)"            
+#[25] "mean2(Mem_voluntary)"             "mean2(Cit_action_Attend_meeting)" "mean2(Cit_action_raise_issue)"    "mean2(Diss_request_government)"  
+#[29] "mean2(Diss_Contact_official)"     "mean2(Diss_Attend_demonstration)" "mean2(Democ_pref)"                "mean2(dDemoc_pref)"              
+#[33] "mean2(Democ_nation)"              "mean2(Democ_satis)"               "mean2(Trust_president)"           "mean2(Trust_parliament)"         
+#[37] "mean2(Trust_police)"              "mean2(Trust_traditional_leaders)" "mean2(Trust_religious_leaders)"   "mean2(Use_Inet)"                 
+#[41] "mean2(Use_Mbphone)"               "mean2(Education)"                 "mNews_Radio"                      "mNews_Television"                
+#[45] "mNews_Newspaper"                  "mNews_Internet"                   "mNews_Social_media"               "mOwn_Radio"                      
+#[49] "mOwn_TV"                          "mOwn_Auto"                        "mOwn_Mbphone"                    
+
+
+names(mdat)[1:2]<-c("COUNTRY2","year")
+
+dat<-mdat[,c("COUNTRY2","year","mOwn_Radio")];names(dat)<-c("cnam","t","y")	##40-90%   w3から大きくはかわらず｡　w7では低下の国が多い(が質問方法がかわった)
+	group_trend_plot(dat,lab="own Radio")
+
+dat<-mdat[,c("COUNTRY2","year","mOwn_TV")];names(dat)<-c("cnam","t","y")	#10-90%   w3から微増傾向　w7では低下の国が多い(が質問方法がかわった)
+	group_trend_plot(dat,lab="own TV")
+
+dat<-mdat[,c("COUNTRY2","year","mOwn_Auto")];names(dat)<-c("cnam","t","y")	#0-40%s
+	group_trend_plot(dat,lab="own Auto")
+
+dat<-mdat[,c("COUNTRY2","year","mOwn_Mbphone")];names(dat)<-c("cnam","t","y")	#w4　だと30%程度の国もあるが､多くは50%以上｡　W6だと､多くの国で8割を超えている
+	group_trend_plot(dat,lab="own Mbphone")
+
+
+#	ニュースソースとしての利用状況
+dat<-mdat[,c("COUNTRY2","year","mNews_Radio")];names(dat)<-c("cnam","t","y")		#低下傾向
+	group_trend_plot(dat,lab="Radio")
+dat<-mdat[,c("COUNTRY2","year","mNews_Television")];names(dat)<-c("cnam","t","y")	#ほぼ横ばい　7から低下国も
+	group_trend_plot(dat,lab="TV")
+
+dat<-mdat[,c("COUNTRY2","year","mNews_Newspaper")];names(dat)<-c("cnam","t","y")	#低下傾向
+	group_trend_plot(dat,lab="Newspaper")
+
+dat<-mdat[,c("COUNTRY2","year","mNews_Internet")];names(dat)<-c("cnam","t","y")		#増加
+	group_trend_plot(dat,lab="Internet")
+
+dat<-mdat[,c("COUNTRY2","year","mNews_Social_media")];names(dat)<-c("cnam","t","y")	#増加
+	group_trend_plot(dat,lab="Social_media ")
+
+
+
+
+##--year毎に
+v<-as.formula('~Own_TV+Age+Gender_f+Education+	#dUrban+
+Mem_religious+
+gone_water+
+dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs+
+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_none+dReligion_Lutheran+dReligion_Methodist+dReligion_Independent+dReligion_SeventhDay+
+as.factor(COUNTRY2)')	#dRace_Oth Religion+as.factor(Education)+
+
+res_oOwn_Mbphone<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family= binomial(link = "logit"), data=AfrodatAllN)
+	summary(res_oOwn_Mbphone)
+
+res_oOwn_Mbphone_w4<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family= binomial(link = "logit"), data=AfrodatAllN[AfrodatAllN$wave==4,])
+	summary(res_oOwn_Mbphone_w4)
+res_oOwn_Mbphone_w5<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==5,])
+	summary(res_oOwn_Mbphone_w5)
+res_oOwn_Mbphone_w6<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==6,])
+	summary(res_oOwn_Mbphone_w6)
+res_oOwn_Mbphone_w7<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==7,])
+	summary(res_oOwn_Mbphone_w7)
+
+mtable(res_oOwn_Mbphone,res_oOwn_Mbphone_w4,res_oOwn_Mbphone_w5,res_oOwn_Mbphone_w6,res_oOwn_Mbphone_w7,
+	summary.stats=c("p","N","AIC"))
+
+
+##--year  国レベル
+v<-as.formula('~Own_TV+Age+Gender_f+Education+	#dUrban+
+Mem_religious+
+gone_water+
+dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs+
+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_none+dReligion_Lutheran+dReligion_Methodist+dReligion_Independent+dReligion_SeventhDay+
+as.factor(COUNTRY2)+
+year+GDP_per_capita2+Mobile_cellular_subscriptions2+Access_to_electricity2
+')	#dRace_Oth Religion+as.factor(Education)+
+
+
+#人口密度
+AfrodatAllN$PopDens<-AfrodatAllN$Population__total2/AfrodatAllN$Surface_area2
+
+#中心化
+m<-mean2(AfrodatAllN$year)
+	AfrodatAllN$yearc<-AfrodatAllN$year-m
+m<-mean2(AfrodatAllN$GDP_per_capita2)
+	AfrodatAllN$GDP_per_capita2c<-AfrodatAllN$GDP_per_capita2-m
+m<-mean2(AfrodatAllN$Access_to_electricity2)
+	AfrodatAllN$Access_to_electricity2c<-AfrodatAllN$Access_to_electricity2-m
+m<-mean2(AfrodatAllN$Mobile_cellular_subscriptions2)
+	AfrodatAllN$Mobile_cellular_subscriptions2c<-AfrodatAllN$Mobile_cellular_subscriptions2-m
+
+attach(AfrodatAllN,warn=F)
+cor(data.frame(year,yearc,GDP_per_capita2,GDP_per_capita2c,GDP_per_capita2*year,GDP_per_capita2c*yearc),use="complete")
+
+res_oOwn_Mbphone_2<-glm(Own_Mbphone~year+GDP_per_capita2c+Access_to_electricity2c+
+Own_TV+Age+Gender_f+Education+	#dUrban+
+Mem_religious+
+gone_water+
+dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs+
+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_none+dReligion_Lutheran+dReligion_Methodist+dReligion_Independent+dReligion_SeventhDay+
+as.factor(COUNTRY2),family= binomial(link = "logit"), data=AfrodatAllN)	#+Mobile_cellular_subscriptions2
+	summary(res_oOwn_Mbphone_2)
+
+
+res_oOwn_Mbphone_2.1<-update(res_oOwn_Mbphone_2,.~.+GDP_per_capita2c:yearc)
+	summary(res_oOwn_Mbphone_2.1)
+#year:GDP_per_capita2 がマイナスなので
+res_oOwn_Mbphone_2.1.2<-update(res_oOwn_Mbphone_2.1,.~.-GDP_per_capita2)
+	summary(res_oOwn_Mbphone_2.1.2)
+
+
+res_oOwn_Mbphone_w4_2<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family= binomial(link = "logit"), data=AfrodatAllN[AfrodatAllN$wave==4,])
+	summary(res_oOwn_Mbphone_w4_2)
+res_oOwn_Mbphone_w5_2<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==5,])
+	summary(res_oOwn_Mbphone_w5_2)
+res_oOwn_Mbphone_w6_2<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==6,])
+	summary(res_oOwn_Mbphone_w6_2)
+res_oOwn_Mbphone_w7_2<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==7,])
+	summary(res_oOwn_Mbphone_w7_2)
+
+mtable(res_oOwn_Mbphone_2,res_oOwn_Mbphone_w4_2,res_oOwn_Mbphone_w5_2,res_oOwn_Mbphone_w6_2,res_oOwn_Mbphone_w7_2,
+	summary.stats=c("p","N","AIC"))
+
+
+#---
+names(AfrodatAllNg)
+summary(AfrodatAll)
+
+cor(dat<-Afrodat6[,c("gone_food","gone_water","gone_med","gone_cash","gone_fuel","Electric_connection","Mem_religious","Mem_voluntary","Cit_action_Attend_meeting","Cit_action_raise_issue","Ele_campaign_rally","Ele_campaign_meeting","Ele_Attend_persuade","Ele_Attend_Work")],use="complete")
+
+factanal(dat[complete.cases(dat),],2,rotation="promax")
+factanal(dat[complete.cases(dat),],3,rotation="promax")
+factanal(dat[complete.cases(dat),],4,rotation="promax")
+factanal(dat[complete.cases(dat),],5,rotation="promax")
+
+
+
+
+Model.cfa0<- '
+	f1lack_food=~gone_food +gone_water+gone_med+gone_cash+gone_fuel #
+	f2connect_Elec=~Electric_connection #
+	f3community=~Mem_religious+Mem_voluntary #
+	f4action=~Cit_action_Attend_meeting +Cit_action_raise_issue #
+	f5Election=~Ele_campaign_rally +Ele_campaign_meeting+Ele_Attend_persuade+ Ele_Attend_Work#
+	'
+res.cfa0<-lavaan(Model.cfa0, data=Afrodat6,auto.var=TRUE,  auto.fix.first=TRUE,auto.fix.single=T,auto.cov.lv.x=TRUE)
+	summary(res.cfa0, fit.measures=TRUE)		
+	standardizedSolution(res.cfa0, type = "std.all")
+
+#多母集団
+res.cfa0g<-lavaan(Model.cfa0, data=Afrodat6,auto.var=TRUE,  auto.fix.first=TRUE,auto.fix.single=T,auto.cov.lv.x=TRUE,group="COUNTRY2")
+	summary(res.cfa0g, fit.measures=TRUE)		
+
+
+
+
+
+
+
+
+
+
 
 
 #-------Round 6で遊ぶ
@@ -457,7 +641,7 @@ Age+Gender_f+Education+
 dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
 dOccupation_Student+dOccupation_Housewife_homemaker+dOccupation_primary+dOccupation_Trader+dOccupation_Retail+dOccupation_Unskilled+dOccupation_skilled+dOccupation_Clerical+dOccupation_Supervisor+dOccupation_police+dOccupation_Mid_level+dOccupation_Upper_level+	
 dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
-dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dlang_English+dlang_French+dlang_Portuguese+dlang_Other+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
 dCOUNTRY_ALG+dCOUNTRY_BDI+dCOUNTRY_BFO+dCOUNTRY_CAM+dCOUNTRY_CDI+dCOUNTRY_EGY+dCOUNTRY_GAB+dCOUNTRY_GHA+dCOUNTRY_GUI+dCOUNTRY_KEN+dCOUNTRY_LES+dCOUNTRY_LIB+dCOUNTRY_MAD+dCOUNTRY_MAU+dCOUNTRY_MLI+dCOUNTRY_MLW+dCOUNTRY_MOR+dCOUNTRY_MOZ+dCOUNTRY_NAM+dCOUNTRY_NGR+dCOUNTRY_NIG+dCOUNTRY_SAF+dCOUNTRY_SEN+dCOUNTRY_SRL+dCOUNTRY_STP+dCOUNTRY_SUD+dCOUNTRY_SWZ+dCOUNTRY_TAN+dCOUNTRY_TOG+dCOUNTRY_TUN+dCOUNTRY_UGA+dCOUNTRY_ZAM')
 ##dOccupation_Never+ dOccupation_Other +dRace_Oth 
 
@@ -818,7 +1002,7 @@ par(mfrow=c(1,1))
 
 head(m)
 #Radio
-dat<-m[,c(1:3)];names(dat)<-c("cnam","t","y")
+dat<-m[,c(1:3)];names(dat)<-c("cnam","t","y")	#40-90%   w3から大きくはかわらず｡　w7では低下の国が多い(が質問方法がかわった)
 	group_trend_plot(dat,lab="Radio")
 dat<-m[,c(1:2,4)];names(dat)<-c("cnam","t","y")
 	group_trend_plot(dat,lab="TV")
