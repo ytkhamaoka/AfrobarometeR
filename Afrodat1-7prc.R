@@ -513,8 +513,9 @@ write.mtable(res_oOwn_Mbphone.ZIM.2,res_oOwn_Mbphone.BFO.1,res_oOwn_Mbphone.MLI.
              format=c("delim"))
 
 
-
-
+#-------------------------
+#-----以下は検討中
+#-------------------------
 #----マルチレベル##yearにランダム切片と傾き
 mres_oOwn_Mbphone<-glmer(Own_Mbphone~log(year)+	#log(GDP_per_capita2)+log(Mobile_cellular_subscriptions2)+Access_to_electricity2c+PopDens+
 log(Age)+Gender_f+Education+	#dUrban+
@@ -546,14 +547,6 @@ mtable(mres_oOwn_Mbphone,mres_oOwn_Mbphone.1,mres_oOwn_Mbphone.2,mres_oOwn_Mbpho
 	summary.stats=c("Deviance","N","AIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
 
 
-
-
-
-
-
-
-
-
 #最も早い時点のw4について比較
 mres_oOwn_Mbphone_w4<-glmer(Own_Mbphone~#log(year)+	#log(GDP_per_capita2)+log(Mobile_cellular_subscriptions2)+Access_to_electricity2c+PopDens+
 log(Age)+Gender_f+Education+	#dUrban+
@@ -581,8 +574,6 @@ mres_oOwn_Mbphone_w4.3<-update(mres_oOwn_Mbphone_w4.2,.~.+lgGDP_per_capita2c:Edu
 
 mtable(mres_oOwn_Mbphone_w4,mres_oOwn_Mbphone_w4.1,mres_oOwn_Mbphone_w4.2,
 	summary.stats=c("Deviance","N","AIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
-
-
 
 
 #w7について
@@ -628,11 +619,8 @@ log(Age)+Gender_f+Education+	#dUrban+
 
 
 
-
-
-
-
-#---
+#-------参考)Round 6で遊ぶ
+#---SEM?
 names(AfrodatAllNg)
 summary(AfrodatAll)
 
@@ -642,9 +630,6 @@ factanal(dat[complete.cases(dat),],2,rotation="promax")
 factanal(dat[complete.cases(dat),],3,rotation="promax")
 factanal(dat[complete.cases(dat),],4,rotation="promax")
 factanal(dat[complete.cases(dat),],5,rotation="promax")
-
-
-
 
 Model.cfa0<- '
 	f1lack_food=~gone_food +gone_water+gone_med+gone_cash+gone_fuel #
@@ -662,23 +647,12 @@ res.cfa0g<-lavaan(Model.cfa0, data=Afrodat6,auto.var=TRUE,  auto.fix.first=TRUE,
 	summary(res.cfa0g, fit.measures=TRUE)		
 
 
-
-#-------Round 6で遊ぶ
 #国別に集計してみる
 Afrodat6g<-group_by(Afrodat6,Afrodat6$COUNTRY2)
-
 m<-summarise(Afrodat6g,mNews_Radio=mean2(News_Radio),mNews_Television=mean2(News_Television),mNews_Newspaper=mean2(News_Newspaper),mNews_Internet=mean2(News_Internet),mNews_Social_media=mean2(News_Social_media),
 mOwn_Radio=mean2(Own_Radio), mOwn_TV=mean2(Own_TV), mOwn_Auto=mean2(Own_Auto), mOwn_Mbphone=mean2(Own_Mbphone))
 as.data.frame(m)
 #edit(as.data.frame(m))
-
-
-#"dlang_English"                   "dlang_French"                    "dlang_Portuguese"               "dlang_Swahili"                   "dlang_Arabic"                    "dlang_Afrikaans"                 "dlang_Chichewa"                 "dlang_Akan"                      "dlang_Other"                     "dlang_Egyptian_Arabic"           "dlang_Crioulo"                   "dlang_Kirund"                    "dlang_Sesotho"                   "dlang_Sudanese_Arabic"           "dlang_Creole"                   "dlang_siSwati"                   "dlang_Shona"                     "dlang_Algerian_Arabic" 
-
-#"dOccupation_Never"               "dOccupation_Student"            "dOccupation_Housewife_homemaker" "dOccupation_primary"             "dOccupation_Trader"              "dOccupation_Retail"              "dOccupation_Unskilled"           "dOccupation_skilled"             "dOccupation_Clerical"            "dOccupation_Supervisor"         "dOccupation_police"              "dOccupation_Mid_level"           "dOccupation_Upper_level"         "dOccupation_Other" 
-
-#"dRace_BAf"                       "dRace_Wh"                        "dRace_Col"                       "dRace_Arab"                      "dRace_SAs"                       "dRace_EAs"                       "dRace_Oth"                      
-
 
 #単純にfactorだと変数が多い
 #res<-glm(Own_TV~Age+Gender_f+Education+as.factor(Employment_status)+as.factor(Race)+as.factor(Occupation)+Mem_religious+Mem_voluntary+gone_food+gone_cash+as.factor(Language)+COUNTRY2,family="binomial",data=Afrodat6)
@@ -995,14 +969,6 @@ res_nSocial_media<-lm(formula(paste("News_Social_media~",v,sep="")[2]),data=Afro
 mtable(res_oAuto,res_oMbphone,res_oRadio,res_nRadio,res_oTelevision,res_nTelevision,res_nInternet,res_nSocial_media)
 
 
-
-
-
-
-
-
-
-
 #ーーーーーーー保有状況でクラスタ
 set.seed(12345)
 d<-complete.cases(Afrodat6[,c("Own_Auto","Own_Mbphone","Own_Radio","Own_TV","News_Radio","News_Television","News_Internet","News_Social_media")])
@@ -1067,9 +1033,6 @@ names(dat)<-c("own","usage")
 #  18.8 28.4 27.7 10.7 14.5 100 52496
 
 
-
-
-
 #multivariate probit  #処理遅いので
 #resmP<-mvProbit(formula(paste("cbind(Own_Auto,Own_Mbphone,Own_Radio,Own_TV)~",v,sep="")[2]),data=Afrodat6[d,])
 #resmP<-mvProbit(cbind(Own_Auto,Own_Mbphone,Own_Radio,Own_TV)~gone_food+gone_cash+Mem_religious+Mem_voluntary+Age+Gender_f+Education+dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+dOccupation_Never+dOccupation_Student+dOccupation_Housewife_homemaker+dOccupation_primary+dOccupation_Trader+dOccupation_Retail+dOccupation_Unskilled+dOccupation_skilled+dOccupation_Clerical+dOccupation_Supervisor+dOccupation_police+dOccupation_Mid_level+dOccupation_Upper_level+	dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+dCOUNTRY_ALG+dCOUNTRY_BDI+dCOUNTRY_BFO+dCOUNTRY_CAM+dCOUNTRY_CDI+dCOUNTRY_EGY+dCOUNTRY_GAB+dCOUNTRY_GHA+dCOUNTRY_GUI+dCOUNTRY_KEN+dCOUNTRY_LES+dCOUNTRY_LIB+dCOUNTRY_MAD+dCOUNTRY_MAU+dCOUNTRY_MLI+dCOUNTRY_MLW+dCOUNTRY_MOR+dCOUNTRY_MOZ+dCOUNTRY_NAM+dCOUNTRY_NGR+dCOUNTRY_NIG+dCOUNTRY_SAF+dCOUNTRY_SEN+dCOUNTRY_SRL+dCOUNTRY_STP+dCOUNTRY_SUD+dCOUNTRY_SWZ+dCOUNTRY_TAN+dCOUNTRY_TOG+dCOUNTRY_TUN+dCOUNTRY_UGA+dCOUNTRY_ZAM,data=Afrodat6[d,])	#dlang_Egyptian_Arabic+	とdCOUNTRY_EGYが相関
@@ -1084,7 +1047,6 @@ AfrodatAll2g<-groupedData(News_Radio~year|COUNTRY2,data=AfrodatAll2)
 	reslm.g<-lmList(News_Radio~year|COUNTRY2,data=AfrodatAll2,na.action=na.omit)
 	summary(reslm.g)
 	plot(intervals(reslm.g))
-
 
 	dat0<-AfrodatAll2[AfrodatAll2$COUNTRY2=="BEN",]
 	table(dat0$year,dat0$News_Internet,exclude=NULL)	#	2012=wave5		それぞれ測定前については0にしてダミー定義
@@ -1171,10 +1133,6 @@ res2tv<-update(res2,News_Television~.)
 	summary(res2tv)
 #       AIC      BIC    logLik
 #  914766.6 914829.1 -457377.3
-
-
-
-
 
 
 save.image("0Afrodat.img")
