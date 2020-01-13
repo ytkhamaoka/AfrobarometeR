@@ -6,18 +6,15 @@
 #　http://news.fbc.keio.ac.jp/~hamaoka/cgi-bin/fswiki/wiki.cgi?page=R　
 
 
-#install.packages(c("dplyr","haven","memisc","biglm","nlme","ICC","lavaan","semTools","biglm","car"))	#としてインストールしておく
+#install.packages(c("dplyr","haven","memisc","biglm","nlme","ICC","lavaan","semTools","biglm"))	#としてインストールしておく
 options(width=150)
 library(dplyr)	#国別集計用
 library(haven)	#SPSSデータ読み込み
-library(memisc)	#lmの出力整形		lmerオブジェクトは処理不可能
-library(stargazer)	#lmの出力整形  lmerオブジェクトも処理可能
+library(memisc)	#lmの出力整形
 library(biglm)	#bigdata lm,glm
 library(nlme)	#multi-level
 library(lme4)	#multi-level
 library(mgcv)	#GAM(multi-level for bigdata)
-
-library(car)	#vif
 
 library(lattice)	#lattice plot
 library(ICC)	#級内相関
@@ -148,10 +145,12 @@ plot(dat$year,dat$mNews_Radio,type="l",xlim=c(2000,2018),ylim=c(0,4),...)	#ylab=
 load(file="0AfrodatAllN.rda");names(AfrodatAllN)	#afro1-7の使う変数データにWbankの国レベルデータ(1次らぐつき)をつけたもの
 
 
-#----------------平均値		国別､年別
+#-----------
 #AfrodatAllN		"Own_Radio","Own_TV","Own_Auto","Own_Mbphone",
 AfrodatAllNg<-group_by(AfrodatAllN, AfrodatAllN$COUNTRY2,AfrodatAllN$year)	#国､年別に集計することを指定
 
+
+#平均値		国別､年別
 (mdat<-summarise(AfrodatAllNg,N=n(),
 mean2(wave),mean2(year),mean2(COUNTRY2),
 mean2(dUrban),mean2(Age),mean2(Gender_f),mean2(Language),mean2(Race),
@@ -252,29 +251,115 @@ dat<-mdat[,c("COUNTRY2","year","mOwn_Mbphone")];names(dat)<-c("cnam","t","y")	#w
 	group_trend_plot(dat,lab="own Mbphone")
 
 
-##----------変数定義 
+
+##--所有　year毎に分析
+v<-as.formula('~Own_TV+Age+Gender_f+Education+	#dUrban+
+Mem_religious+
+gone_water+
+dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs+
+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_none+dReligion_Lutheran+dReligion_Methodist+dReligion_Independent+dReligion_SeventhDay+
+as.factor(COUNTRY2)')	#dRace_Oth Religion+as.factor(Education)+
+
+res_oOwn_Mbphone<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family= binomial(link = "logit"), data=AfrodatAllN)
+	summary(res_oOwn_Mbphone)
+
+res_oOwn_Mbphone_w4<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family= binomial(link = "logit"), data=AfrodatAllN[AfrodatAllN$wave==4,])
+	summary(res_oOwn_Mbphone_w4)
+res_oOwn_Mbphone_w5<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==5,])
+	summary(res_oOwn_Mbphone_w5)
+res_oOwn_Mbphone_w6<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==6,])
+	summary(res_oOwn_Mbphone_w6)
+res_oOwn_Mbphone_w7<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==7,])
+	summary(res_oOwn_Mbphone_w7)
+
+mtable(res_oOwn_Mbphone,res_oOwn_Mbphone_w4,res_oOwn_Mbphone_w5,res_oOwn_Mbphone_w6,res_oOwn_Mbphone_w7,
+	summary.stats=c("p","N","AIC"))
+
+
+##--year 
+#人口密度
 AfrodatAllN$PopDens<-AfrodatAllN$Population__total2/AfrodatAllN$Surface_area2
-	AfrodatAllN$lgPopDens<-log(AfrodatAllN$PopDens)
-#人口密度 対数
-AfrodatAllN$PopDens<-AfrodatAllN$Population__total2/AfrodatAllN$Surface_area2
-	AfrodatAllN$lgPopDens<-log(AfrodatAllN$PopDens)
-	AfrodatAllN$lgPopDensc<-AfrodatAllN$lgPopDens-ave(AfrodatAllN$lgPopDens,AfrodatAllN$COUNTRY2)
 #モバイル普及率
-AfrodatAllN$MobDifusion<-AfrodatAllN$Mobile_cellular_subscriptions2/AfrodatAllN$Population__total2	#人口はそんなに変わらないので､あまり意味なし
+AfrodatAllN$MobDifusion<-AfrodatAllN$Mobile_cellular_subscriptions2/AfrodatAllN$Population__total2
 
-#国レベル中心化  GDPとMobile_cellular_subscriptions2cについては対数をとる
-AfrodatAllN$yearc<-AfrodatAllN$year-ave(AfrodatAllN$year,AfrodatAllN$COUNTRY2)
-	AfrodatAllN$lgyear<-log(AfrodatAllN$year)
-	AfrodatAllN$lgyearc<-AfrodatAllN$yearc-ave(AfrodatAllN$year,AfrodatAllN$COUNTRY2)
-AfrodatAllN$lgGDP_per_capita2<-log(AfrodatAllN$GDP_per_capita2)
-	AfrodatAllN$lgGDP_per_capita2c<-AfrodatAllN$lgGDP_per_capita2-ave(AfrodatAllN$lgGDP_per_capita2,AfrodatAllN$COUNTRY2)
-AfrodatAllN$Access_to_electricity2c<-AfrodatAllN$Access_to_electricity2-ave(AfrodatAllN$Access_to_electricity2,AfrodatAllN$COUNTRY2)
-
-AfrodatAllN$lgMobile_cellular_subscriptions2<-log(AfrodatAllN$Mobile_cellular_subscriptions2)
-	AfrodatAllN$lgMobile_cellular_subscriptions2c<-AfrodatAllN$lgMobile_cellular_subscriptions2-ave(AfrodatAllN$lgMobile_cellular_subscriptions2,AfrodatAllN$COUNTRY2)
+#中心化
+m<-mean2(AfrodatAllN$year)
+	AfrodatAllN$yearc<-AfrodatAllN$year-m
+m<-mean2(AfrodatAllN$GDP_per_capita2)
+	AfrodatAllN$GDP_per_capita2c<-AfrodatAllN$GDP_per_capita2-m
+m<-mean2(AfrodatAllN$Access_to_electricity2)
+	AfrodatAllN$Access_to_electricity2c<-AfrodatAllN$Access_to_electricity2-m
+m<-mean2(AfrodatAllN$Mobile_cellular_subscriptions2)
+	AfrodatAllN$Mobile_cellular_subscriptions2c<-AfrodatAllN$Mobile_cellular_subscriptions2-m
+		summary(AfrodatAllN$Mobile_cellular_subscriptions2)
 
 attach(AfrodatAllN,warn=F)
-cor(data.frame(year,lgPopDens,MobDifusion,lgGDP_per_capita2c,lgMobile_cellular_subscriptions2c,Access_to_electricity2c,lgGDP_per_capita2c*yearc,lgMobile_cellular_subscriptions2c*yearc,Access_to_electricity2c*yearc),use="complete")
+cor(data.frame(yearc,PopDens,MobDifusion,GDP_per_capita2c,Mobile_cellular_subscriptions2c,Access_to_electricity2c,GDP_per_capita2*yearc,Mobile_cellular_subscriptions2c*yearc,Access_to_electricity2c*yearc),use="complete")
+#Mobile_cellular_subscriptions2やMobDifusionはyearなどと相関高い
+
+#yearc*GDP_per_capita2c+yearc*Access_to_electricity2c+yearc*Mobile_cellular_subscriptions2c+
+res_oOwn_Mbphone_2<-glm(Own_Mbphone~yearc+GDP_per_capita2c+Mobile_cellular_subscriptions2c+Access_to_electricity2c+PopDens+
+Age+Gender_f+Education+	#dUrban+
+Mem_religious+
+gone_water+
+dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
+dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
+dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_none+dReligion_Lutheran+dReligion_Methodist+dReligion_Independent+dReligion_SeventhDay+
+as.factor(COUNTRY2),family= binomial(link = "logit"), data=AfrodatAllN)	#+Mobile_cellular_subscriptions2+dlang_Sudanese_Arabic+
+	summary(res_oOwn_Mbphone_2)
+#yearc                            1.534e-01  5.414e-03  28.326  < 2e-16 ***
+#GDP_per_capita2c                 8.442e-05  2.417e-05   3.492 0.000479 ***
+#Mobile_cellular_subscriptions2c  4.869e-09  1.055e-09   4.615 3.93e-06 ***
+#Access_to_electricity2c          3.534e-03  2.216e-03   1.595 0.110804    
+#PopDens                         -1.566e-02  1.707e-03  -9.176  < 2e-16 ***
+
+
+res_oOwn_Mbphone_2.1<-update(res_oOwn_Mbphone_2,.~.+Mobile_cellular_subscriptions2c:yearc)	#yearc:Mobile_cellular_subscriptions2c 　マイナス
+	summary(res_oOwn_Mbphone_2.1)
+#yearc                                  1.427e-01  5.794e-03  24.626  < 2e-16 ***
+#GDP_per_capita2c                       4.398e-05  2.546e-05   1.727 0.084096 .  
+#Mobile_cellular_subscriptions2c        1.392e-08  2.098e-09   6.635 3.25e-11 ***
+#Access_to_electricity2c                2.887e-03  2.209e-03   1.307 0.191273    
+#PopDens                               -1.535e-02  1.703e-03  -9.010  < 2e-16 ***
+#yearc:Mobile_cellular_subscriptions2c -8.452e-10  1.685e-10  -5.017 5.24e-07 ***
+
+res_oOwn_Mbphone_2.1.2<-update(res_oOwn_Mbphone_2,.~.+Access_to_electricity2c:yearc)	#+yearc:Access_to_electricity2c 
+	summary(res_oOwn_Mbphone_2.1.2)
+#yearc                            1.554e-01  5.486e-03  28.324  < 2e-16 ***
+#GDP_per_capita2c                 8.177e-05  2.422e-05   3.377 0.000734 ***
+#Mobile_cellular_subscriptions2c  4.036e-09  1.109e-09   3.638 0.000275 ***
+#Access_to_electricity2c          2.565e-03  2.254e-03   1.138 0.255233    
+#PopDens                         -1.488e-02  1.738e-03  -8.559  < 2e-16 ***
+#yearc:Access_to_electricity2c    2.624e-04  1.069e-04   2.454 0.014142 *  
+
+
+res_oOwn_Mbphone_2.1.3<-update(res_oOwn_Mbphone_2,.~.+GDP_per_capita2c:yearc)	#+yearc:Access_to_electricity2c 
+	summary(res_oOwn_Mbphone_2.1.3)
+#yearc                            1.548e-01  5.402e-03  28.657  < 2e-16 ***
+#GDP_per_capita2c                 1.519e-04  2.618e-05   5.802 6.57e-09 ***
+#Mobile_cellular_subscriptions2c  6.483e-09  1.078e-09   6.016 1.79e-09 ***
+#Access_to_electricity2c          1.494e-03  2.235e-03   0.669 0.503759    
+#PopDens                         -1.925e-02  1.785e-03 -10.785  < 2e-16 ***
+#yearc:GDP_per_capita2c          -9.848e-06  1.456e-06  -6.765 1.33e-11 ***
+
+
+res_oOwn_Mbphone_2.1.4<-update(res_oOwn_Mbphone_2,.~.+Mobile_cellular_subscriptions2c:yearc+Access_to_electricity2c:yearc+GDP_per_capita2c:yearc)	#+yearc:Access_to_electricity2c 
+	summary(res_oOwn_Mbphone_2.1.4)
+#yearc                                  1.601e-01  5.984e-03  26.751  < 2e-16 ***
+#GDP_per_capita2c                       1.986e-04  3.019e-05   6.580 4.72e-11 ***
+#Mobile_cellular_subscriptions2c        1.202e-08  2.145e-09   5.604 2.09e-08 ***
+#Access_to_electricity2c               -8.671e-03  2.415e-03  -3.590 0.000331 ***
+#PopDens                               -1.900e-02  1.803e-03 -10.540  < 2e-16 ***
+#yearc:Mobile_cellular_subscriptions2c -8.153e-10  1.825e-10  -4.467 7.95e-06 ***
+#yearc:Access_to_electricity2c          1.757e-03  1.575e-04  11.161  < 2e-16 ***
+#yearc:GDP_per_capita2c                -2.477e-05  2.133e-06 -11.609  < 2e-16 ***
+
+mtable(res_oOwn_Mbphone_2,res_oOwn_Mbphone_2.1,res_oOwn_Mbphone_2.1.2,res_oOwn_Mbphone_2.1.3,res_oOwn_Mbphone_2.1.4,
+	summary.stats=c("Deviance","N","AIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
 
 
 summary(AfrodatAllN)
@@ -282,7 +367,7 @@ summary(AfrodatAllN)
 
 edit(mdat)
 
-#国､年別の所有割合
+#
 dd<-mdat[,c("COUNTRY2","year","mOwn_Mbphone")]
 (d0<-reshape(dd,direction = "wide", v.names =c("mOwn_Mbphone"),
 				idvar=c("COUNTRY2"),timevar="year"))
@@ -306,72 +391,11 @@ dim(AfrodatAllN)
 AfrodatAllN2<-merge(AfrodatAllN,d0[,c("COUNTRY2","nobs")],by.x="COUNTRY2",by.y="COUNTRY2")
 	names(AfrodatAllN2);dim(AfrodatAllN2)
 
-
-#Mobile_cellular_subscriptions2やMobDifusionはyearなどと相関高い
-#yearc*GDP_per_capita2c+yearc*Access_to_electricity2c+yearc*Mobile_cellular_subscriptions2c+
-
-
-##		Wave毎に分析
-v<-as.formula('~Own_TV+Age+Gender_f+Education+	#dUrban+
-Mem_religious+
-gone_water+
-dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
-dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs	+
-dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Egyptian_Arabic+dlang_Crioulo+dlang_Kirund+dlang_Sesotho+dlang_Sudanese_Arabic+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+
-dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+dRace_SAs+dRace_EAs+
-dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_none+dReligion_Lutheran+dReligion_Methodist+dReligion_Independent+dReligion_SeventhDay+
-as.factor(COUNTRY2)')	#dRace_Oth Religion+as.factor(Education)+
-
-res_oOwn_Mbphone<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family= binomial(link = "logit"), data=AfrodatAllN)
-	summary(res_oOwn_Mbphone);vif(res_oOwn_Mbphone)
-res_oOwn_Mbphone_w4<-glm(formula(paste("Own_Mbphone~",v,sep="")[2]),family= binomial(link = "logit"), data=AfrodatAllN[AfrodatAllN$wave==4,])
-	summary(res_oOwn_Mbphone_w4);vif(res_oOwn_Mbphone_w4)
-res_oOwn_Mbphone_w5<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==5,])
-	summary(res_oOwn_Mbphone_w5);vif(res_oOwn_Mbphone_w5)
-res_oOwn_Mbphone_w6<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==6,])
-	summary(res_oOwn_Mbphone_w6);vif(res_oOwn_Mbphone_w6)
-res_oOwn_Mbphone_w7<-update(res_oOwn_Mbphone_w4,.~.,data=AfrodatAllN[AfrodatAllN$wave==7,])
-	summary(res_oOwn_Mbphone_w7);vif(res_oOwn_Mbphone_w7)
-
-mtable(res_oOwn_Mbphone,res_oOwn_Mbphone_w4,res_oOwn_Mbphone_w5,res_oOwn_Mbphone_w6,res_oOwn_Mbphone_w7,
-	summary.stats=c("N","AIC"))
-
-
-#------単純にプール   中心か
-res_oOwn_Mbphone_2<-glm(Own_Mbphone~yearc+lgGDP_per_capita2c+lgMobile_cellular_subscriptions2c+Access_to_electricity2c+lgPopDensc+	#PopDens+ VIF22なので除外
-Age+Gender_f+Education+	dUrban+	#dUrbanがすべて欠損の国は分析対象に含まれない
-Mem_religious+
-gone_water+
-dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
-dRace_BAf+dRace_Wh+dRace_Col+dRace_Arab+	#dRace_SAs+dRace_EAs　VIFを高める可能性があるので除外
-dlang_English+dlang_French+dlang_Portuguese+dlang_Swahili+dlang_Arabic+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Sesotho+dlang_Creole+dlang_siSwati+dlang_Shona+dlang_Algerian_Arabic+	#dlang_Egyptian_Arabic+ Egyptのみなので除外	
-dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_none+dReligion_Lutheran+dReligion_Methodist+dReligion_Independent+dReligion_SeventhDay+	#dlang_Crioulo+ VIF1100　　dlang_Kirund+　12なので除外
-as.factor(COUNTRY2),family= binomial(link = "logit"), data=AfrodatAllN)	#+Mobile_cellular_subscriptions2+dlang_Sudanese_Arabic+
-	summary(res_oOwn_Mbphone_2);vif(res_oOwn_Mbphone_2)
-
-res_oOwn_Mbphone_2.1<-update(res_oOwn_Mbphone_2,.~.+lgMobile_cellular_subscriptions2c:yearc)	#yearc:Mobile_cellular_subscriptions2c 　マイナス　　VIF問題なし
-	summary(res_oOwn_Mbphone_2.1);vif(res_oOwn_Mbphone_2.1)
-
-res_oOwn_Mbphone_2.1.2<-update(res_oOwn_Mbphone_2,.~.+Access_to_electricity2c:yearc)	#+yearc:Access_to_electricity2c 
-	summary(res_oOwn_Mbphone_2.1.2);vif(res_oOwn_Mbphone_2.1.2)
-
-res_oOwn_Mbphone_2.1.3<-update(res_oOwn_Mbphone_2,.~.+GDP_per_capita2c:yearc)	#+yearc:Access_to_electricity2c 
-	summary(res_oOwn_Mbphone_2.1.3);vif(res_oOwn_Mbphone_2.1.3)
-
-
-res_oOwn_Mbphone_2.1.4<-update(res_oOwn_Mbphone_2,.~.+Mobile_cellular_subscriptions2c:yearc+Access_to_electricity2c:yearc+GDP_per_capita2c:yearc)	#+yearc:Access_to_electricity2c 
-	summary(res_oOwn_Mbphone_2.1.4)
-
-mtable(res_oOwn_Mbphone_2,res_oOwn_Mbphone_2.1,res_oOwn_Mbphone_2.1.2,res_oOwn_Mbphone_2.1.3,res_oOwn_Mbphone_2.1.4,
-	summary.stats=c("Deviance","N","AIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
-
-
-#-----------------
-#-----w4-7まで参加している国(携帯の所有
-#-----------------
 summary(AfrodatAllN2[AfrodatAllN2$nobs>=4,])
 
-#----マルチレベル##yearにランダム切片と傾き
+
+#----マルチレベル#処理遅い  
+#yearにランダム切片と傾き
 mres_oOwn_Mbphone<-glmer(Own_Mbphone~log(year)+	#log(GDP_per_capita2)+log(Mobile_cellular_subscriptions2)+Access_to_electricity2c+PopDens+
 log(Age)+Gender_f+Education+	#dUrban+
 Mem_religious+
@@ -380,178 +404,9 @@ dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmploy
 dRace_BAf+dRace_Wh+	#dRace_Arab+	
 dlang_English+dlang_Swahili+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Crioulo+dlang_Sesotho+dlang_Shona+
 dReligion_none+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_Independent+	#dReligion_Lutheran+dReligion_Methodist+dReligion_SeventhDay+
-(1|COUNTRY2),family= binomial(link = "logit"), data=AfrodatAllN2[AfrodatAllN2$nobs>=4,])	
+(1+log(year)|COUNTRY2),family= binomial(link = "logit"), data=AfrodatAllN2[AfrodatAllN2$nobs>=4,])	
 	summary(mres_oOwn_Mbphone)
-
-#国レベルの変数導入(個人レベル平均に)	log(Mobile_cellular_subscriptions2)
-mres_oOwn_Mbphone.1<-update(mres_oOwn_Mbphone,.~.+lgGDP_per_capita2c+Access_to_electricity2c+lgMobile_cellular_subscriptions2)	
-	summary(mres_oOwn_Mbphone.1)
-
-mres_oOwn_Mbphone.2<-update(mres_oOwn_Mbphone.1,.~.+(lgGDP_per_capita2c+Access_to_electricity2c+lgMobile_cellular_subscriptions2|COUNTRY2))
-	summary(mres_oOwn_Mbphone.2)
-
-#個人レベルとの交互作用  
-mres_oOwn_Mbphone.3<-update(mres_oOwn_Mbphone.2,.~.+lgGDP_per_capita2c:log(year)+Mem_religious:log(year))
-	summary(mres_oOwn_Mbphone.3)
-
-mtable(mres_oOwn_Mbphone,mres_oOwn_Mbphone.1,mres_oOwn_Mbphone.2,mres_oOwn_Mbphone.3,
-	summary.stats=c("Deviance","N","AIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
-
-#-------------
-#-----携帯の所有のうちw4での普及率が低かった5ヵ国(w4-7まで参加している国)
-#Zimbabweであったが､その後は急速に普及が進み､2017年時点では84%に達している｡Burkina Faso､Maliも同様に､2008年時点では低かったものの､2017年時点にかけて急速に普及している｡一方で､2008年時点で普及率が30%程度であった､Malawi､Madagascarは増加傾向にあるものの､それぞれ2017年時点で50.8%､46.2%にとどまっている｡
-#-------------
-summary(AfrodatAllN2[AfrodatAllN2$COUNTRY2=="ZIM"|AfrodatAllN2$COUNTRY2=="BFO"|AfrodatAllN2$COUNTRY2=="MLI"|AfrodatAllN2$COUNTRY2=="MLW"|AfrodatAllN2$COUNTRY2=="MAD"&AfrodatAllN2$wave>=4,])
-
-dat<-mdat[mdat$COUNTRY2=="ZIM"|mdat$COUNTRY2=="BFO"|mdat$COUNTRY2=="MLI"|mdat$COUNTRY2=="MLW"|mdat$COUNTRY2=="MAD"&mdat$year>=2007,c("COUNTRY2","year","mOwn_Mbphone")];names(dat)<-c("cnam","t","y")	#w4　だと30%程度の国もあるが､多くは50%以上｡　W6だと､多くの国で8割を超えている
-	group_trend_plot(dat,lab="own Mbphone")
-
-#------2008の低普及5ヵ国別にロジット	共通変数
-v<-as.formula('~yearc+log(Age)+Gender_f+Education+	+dUrban+
-dEmployment_status_no+
-dRace_BAf+dRace_Wh+	dRace_Arab+	
-dlang_English+dlang_Swahili+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Crioulo+dlang_Sesotho+dlang_Shona+
-dReligion_none+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_Independent+
-gone_water+gone_cash+
-Mem_religious+Mem_voluntary
-')	#dRace_Oth Religion+as.factor(Education)+
-
-#国レベルは　Access_to_electricity2cだとトートロジーなのでAccess_to_electricity2cにする
-#ZIM　　　分散がない変数は除外　
-dat<-AfrodatAllN2[AfrodatAllN2$COUNTRY2=="ZIM"&AfrodatAllN2$wave>=4,]
-attach(dat,warn=F)
-#lgGDP_per_capita2c とAccess_to_electricity2c の相関高い  yearc とAccess_to_electricity2c*yearcも
-cor(data.frame(yearc,PopDens,MobDifusion,lgGDP_per_capita2c,Access_to_electricity2c,Access_to_electricity2c,lgGDP_per_capita2c*yearc,Access_to_electricity2c*yearc,Access_to_electricity2c*yearc),use="complete")
-
-res_oOwn_Mbphone.ZIM<-glm(formula(paste("Own_Mbphone~",v,"-dRace_Arab-dlang_Swahili-dlang_Afrikaans-dlang_Chichewa-dlang_Akan-dlang_Crioulo-dlang_Sesotho",sep="")[2]),family= binomial(link = "logit"), data=dat)	
-	summary(res_oOwn_Mbphone.ZIM);as.data.frame(vif(res_oOwn_Mbphone.ZIM))
-
-#国レベルの導入
-res_oOwn_Mbphone.ZIM.1<-update(res_oOwn_Mbphone.ZIM,.~.+Access_to_electricity2c)	# +lgGDP_per_capita2cAccess_to_electricity2c+入れるとNA
-	summary(res_oOwn_Mbphone.ZIM.1);as.data.frame(vif(res_oOwn_Mbphone.ZIM.1))	#　lgGDP_per_capita2c　VIF603なので除外 lgPopDensc+
-#国レベル×年の導入
-res_oOwn_Mbphone.ZIM.2<-update(res_oOwn_Mbphone.ZIM.1,.~.+yearc:Access_to_electricity2c)	#log(year):Access_to_electricity2c+log(year):lgGDP_per_capita2c
-	summary(res_oOwn_Mbphone.ZIM.2);as.data.frame(vif(res_oOwn_Mbphone.ZIM.2))	#yearc:Access_to_electricity2c            VIF 133.198992 となる
-#
-mtable(res_oOwn_Mbphone.ZIM,res_oOwn_Mbphone.ZIM.1,res_oOwn_Mbphone.ZIM.2,
-	summary.stats=c("N","Deviance","AIC","BIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
-#res_oOwn_Mbphone.ZIM.2
-
-#---BFO
-dat<-AfrodatAllN2[AfrodatAllN2$COUNTRY2=="BFO"&AfrodatAllN2$wave>=4,]
-attach(dat,warn=F)
-cor(data.frame(yearc,PopDens,MobDifusion,lgGDP_per_capita2c,Access_to_electricity2c,Access_to_electricity2c,lgGDP_per_capita2c*yearc,Access_to_electricity2c*yearc,Access_to_electricity2c*yearc),use="complete")
-
-res_oOwn_Mbphone.BFO<-glm(formula(paste("Own_Mbphone~",v,"-dRace_Arab-dlang_Swahili-dlang_Afrikaans-dlang_Chichewa-dlang_Akan-dlang_Crioulo-dlang_Sesotho-dlang_Shona",sep="")[2]),family= binomial(link = "logit"), data=dat)	
-	summary(res_oOwn_Mbphone.BFO);as.data.frame(vif(res_oOwn_Mbphone.BFO))
-res_oOwn_Mbphone.BFO.1<-update(res_oOwn_Mbphone.BFO,.~.+Access_to_electricity2c)		#VIF15
-	summary(res_oOwn_Mbphone.BFO.1);as.data.frame(vif(res_oOwn_Mbphone.BFO.1))
-res_oOwn_Mbphone.BFO.2<-update(res_oOwn_Mbphone.BFO.1,.~.+yearc:Access_to_electricity2c)		#922.458971
-	summary(res_oOwn_Mbphone.BFO.2);as.data.frame(vif(res_oOwn_Mbphone.BFO.2))
-
-mtable(res_oOwn_Mbphone.BFO,res_oOwn_Mbphone.BFO.1,res_oOwn_Mbphone.BFO.2,	#res_oOwn_Mbphone.BFO.3,
-	summary.stats=c("Deviance","N","AIC","BIC"),coef.style="stat")
-#res_oOwn_Mbphone.BFO
-
-#---MLI
-dat<-AfrodatAllN2[AfrodatAllN2$COUNTRY2=="MLI"&AfrodatAllN2$wave>=4,]
-attach(dat,warn=F)
-cor(data.frame(yearc,PopDens,MobDifusion,lgGDP_per_capita2c,Access_to_electricity2c,Access_to_electricity2c,lgGDP_per_capita2c*yearc,Access_to_electricity2c*yearc,Access_to_electricity2c*yearc),use="complete")
-
-res_oOwn_Mbphone.MLI<-glm(formula(paste("Own_Mbphone~",v,"-dRace_Arab-dlang_English-dlang_Swahili-dlang_Afrikaans-dlang_Chichewa-dlang_Akan-dlang_Crioulo-dlang_Sesotho-dlang_Shona",sep="")[2]),family= binomial(link = "logit"), data=dat)	
-	summary(res_oOwn_Mbphone.MLI);as.data.frame(vif(res_oOwn_Mbphone.MLI))
-res_oOwn_Mbphone.MLI.1<-update(res_oOwn_Mbphone.MLI,.~.+Access_to_electricity2c)	
-	summary(res_oOwn_Mbphone.MLI.1);as.data.frame(vif(res_oOwn_Mbphone.MLI.1))	#Access_to_electricity2c                   10.409493
-res_oOwn_Mbphone.MLI.2<-update(res_oOwn_Mbphone.MLI.1,.~.+yearc:Access_to_electricity2c)	
-	summary(res_oOwn_Mbphone.MLI.2);as.data.frame(vif(res_oOwn_Mbphone.MLI.2))	#Access_to_electricity2c                        206.777052
-
-
-mtable(res_oOwn_Mbphone.MLI,res_oOwn_Mbphone.MLI.1,res_oOwn_Mbphone.MLI.2,
-	summary.stats=c("Deviance","N","AIC","BIC"),coef.style="stat")
-#res_oOwn_Mbphone.MLI
-
-
-#---MLW
-dat<-AfrodatAllN2[AfrodatAllN2$COUNTRY2=="MLW"&AfrodatAllN2$wave>=4,]
-attach(dat,warn=F)
-cor(data.frame(yearc,PopDens,MobDifusion,lgGDP_per_capita2c,Access_to_electricity2c,Access_to_electricity2c,lgGDP_per_capita2c*yearc,Access_to_electricity2c*yearc,Access_to_electricity2c*yearc),use="complete")
-
-res_oOwn_Mbphone.MLW<-glm(formula(paste("Own_Mbphone~",v,"-dRace_Arab-dlang_Afrikaans-dlang_Akan-dlang_Crioulo-dlang_Sesotho-dlang_Shona",sep="")[2]),family= binomial(link = "logit"), data=dat)	
-	summary(res_oOwn_Mbphone.MLW);as.data.frame(vif(res_oOwn_Mbphone.MLW))
-res_oOwn_Mbphone.MLW.1<-update(res_oOwn_Mbphone.MLW,.~.+Access_to_electricity2c)		#Access_to_electricity2c　　VIF11
-	summary(res_oOwn_Mbphone.MLW.1);as.data.frame(vif(res_oOwn_Mbphone.MLW.1))
-res_oOwn_Mbphone.MLW.2<-update(res_oOwn_Mbphone.MLW.1,.~.+yearc:Access_to_electricity2c)	#VIF290などAccess_to_electricity2c                         17.965412
-	summary(res_oOwn_Mbphone.MLW.2);as.data.frame(vif(res_oOwn_Mbphone.MLW.2))
-
-mtable(res_oOwn_Mbphone.MLW,res_oOwn_Mbphone.MLW.1,res_oOwn_Mbphone.MLW.2,
-	summary.stats=c("Deviance","N","AIC","BIC"),coef.style="stat")
-#res_oOwn_Mbphone.MLW.1だがVIF14
-
-#---MAD
-dat<-AfrodatAllN2[AfrodatAllN2$COUNTRY2=="MAD"&AfrodatAllN2$wave>=4,]
-attach(dat,warn=F)
-cor(data.frame(yearc,PopDens,MobDifusion,lgGDP_per_capita2c,Access_to_electricity2c,Access_to_electricity2c,lgGDP_per_capita2c*yearc,Access_to_electricity2c*yearc,Access_to_electricity2c*yearc),use="complete")
-
-res_oOwn_Mbphone.MAD<-glm(formula(paste("Own_Mbphone~",v,"-dlang_Swahili-dlang_Afrikaans-dlang_Chichewa-dlang_Akan-dlang_Other-dlang_Crioulo-dlang_Sesotho-dlang_Shona",sep="")[2]),family= binomial(link = "logit"), data=dat)	
-	summary(res_oOwn_Mbphone.MAD);as.data.frame(vif(res_oOwn_Mbphone.MAD))
-res_oOwn_Mbphone.MAD.1<-update(res_oOwn_Mbphone.MAD,.~.+Access_to_electricity2c)	
-	summary(res_oOwn_Mbphone.MAD.1);as.data.frame(vif(res_oOwn_Mbphone.MAD.1))
-res_oOwn_Mbphone.MAD.2<-update(res_oOwn_Mbphone.MAD.1,.~.+yearc:Access_to_electricity2c)	#Access_to_electricity2c                       1388.275822.
-	summary(res_oOwn_Mbphone.MAD.2);as.data.frame(vif(res_oOwn_Mbphone.MAD.2))
-
-mtable(res_oOwn_Mbphone.MAD,res_oOwn_Mbphone.MAD.1,res_oOwn_Mbphone.MAD.2,
-	summary.stats=c("Deviance","N","AIC","BIC"),coef.style="stat")
-#res_oOwn_Mbphone.MAD
-
-
-#各国の最良モデル
-mtable(res_oOwn_Mbphone.ZIM.2,res_oOwn_Mbphone.BFO,res_oOwn_Mbphone.MLI,res_oOwn_Mbphone.MLW.1,res_oOwn_Mbphone.MAD,
-	summary.stats=c("Deviance","N","AIC","BIC"),coef.style="stat",signif.symbols=c("***"=.01,"**"=.05,"*"=.10))	#検定統計量を出力　coef.style="all" 係数､ses,t,p
-
-write.mtable(res_oOwn_Mbphone.ZIM.2,res_oOwn_Mbphone.BFO.1,res_oOwn_Mbphone.MLI.1,res_oOwn_Mbphone.MLW.1,res_oOwn_Mbphone.MAD.1,
-	summary.stats=c("Deviance","N","AIC","BIC"),coef.style="stat",signif.symbols=c("***"=.01,"**"=.05,"*"=.10),file="0out.txt",
-             format=c("delim"))
-
-
-
-
-#----マルチレベル##yearにランダム切片と傾き
-mres_oOwn_Mbphone<-glmer(Own_Mbphone~log(year)+	#log(GDP_per_capita2)+log(Mobile_cellular_subscriptions2)+Access_to_electricity2c+PopDens+
-log(Age)+Gender_f+Education+	#dUrban+
-Mem_religious+
-gone_water+
-dEmployment_status_no+   #これらはNA2.3万dEmployment_status_looking+dEmployment_status_part_time+dEmployment_status_full_time+
-dRace_BAf+dRace_Wh+	#dRace_Arab+	
-dlang_English+dlang_Swahili+dlang_Afrikaans+dlang_Chichewa+dlang_Akan+dlang_Other+dlang_Crioulo+dlang_Sesotho+dlang_Shona+
-dReligion_none+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dReligion_Pentecostal+dReligion_Anglican+dReligion_Evangelical+dReligion_Independent+	#dReligion_Lutheran+dReligion_Methodist+dReligion_SeventhDay+
-(1|COUNTRY2),family= binomial(link = "logit"), data=dat)	
-	summary(mres_oOwn_Mbphone)
-
-#国レベルの変数導入(個人レベル平均に)	log(Mobile_cellular_subscriptions2)
-mres_oOwn_Mbphone.1<-update(mres_oOwn_Mbphone,.~.+lgGDP_per_capita2c+Access_to_electricity2c+lgMobile_cellular_subscriptions2)	
-	summary(mres_oOwn_Mbphone.1)
-
-mres_oOwn_Mbphone.2<-update(mres_oOwn_Mbphone.1,.~.+(lgGDP_per_capita2c+Access_to_electricity2c+lgMobile_cellular_subscriptions2c|COUNTRY2))
-	summary(mres_oOwn_Mbphone.2)
-
-#個人レベルとの交互作用  
-mres_oOwn_Mbphone.3<-update(mres_oOwn_Mbphone.2,.~.+lgGDP_per_capita2c:log(year)+Mem_religious:log(year))
-	summary(mres_oOwn_Mbphone.3)
-
-
-stargazer(mres_oOwn_Mbphone,mres_oOwn_Mbphone.1,mres_oOwn_Mbphone.2,mres_oOwn_Mbphone.3,
-	summary.stats=c("Deviance","N","AIC"),coef.style="stat",type="text")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
-
-mtable(mres_oOwn_Mbphone,mres_oOwn_Mbphone.1,mres_oOwn_Mbphone.2,mres_oOwn_Mbphone.3,
-	summary.stats=c("Deviance","N","AIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
-
-
-
-
-
-
-
-
+#fixed-effect model matrix is rank deficient so dropping 8 columns / coefficients dlang_Arabic+dlang_Egyptian_Arabic+dlang_French+dlang_Portuguese+dlang_Creole+
 
 
 #最も早い時点のw4について比較
@@ -567,31 +422,14 @@ dReligion_none+dReligion_Muslim+dReligion_RomanCatholic+dReligion_Christian+dRel
 #fixed-effect model matrix is rank deficient so dropping 2 columns / coefficients
 	summary(mres_oOwn_Mbphone_w4)
 
-#国レベルの変数導入(個人レベル平均に)	log(Mobile_cellular_subscriptions2)
-mres_oOwn_Mbphone_w4.1<-update(mres_oOwn_Mbphone_w4,.~.+lgGDP_per_capita2c+Access_to_electricity2c+lgMobile_cellular_subscriptions2)	
-	summary(mres_oOwn_Mbphone_w4.1)
-
-mres_oOwn_Mbphone_w4.2<-update(mres_oOwn_Mbphone_w4.1,.~.+(lgGDP_per_capita2c+Access_to_electricity2c+lgMobile_cellular_subscriptions2|COUNTRY2))
-	summary(mres_oOwn_Mbphone_w4.2)
-
-#個人レベルとの交互作用  経済×教育　　　普及×集団　　
-mres_oOwn_Mbphone_w4.3<-update(mres_oOwn_Mbphone_w4.2,.~.+lgGDP_per_capita2c:Education+Mem_religious:lgMobile_cellular_subscriptions2c)
-	summary(mres_oOwn_Mbphone_w4.3)
-
-
-mtable(mres_oOwn_Mbphone_w4,mres_oOwn_Mbphone_w4.1,mres_oOwn_Mbphone_w4.2,
-	summary.stats=c("Deviance","N","AIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
-
+#国レベルの変数導入(切片)	log(Mobile_cellular_subscriptions2)
+mres_oOwn_Mbphone_w4.1<-update(mres_oOwn_Mbphone_w4,.~.+log(GDP_per_capita2)+Access_to_electricity2c+PopDens+(1|COUNTRY2), data=AfrodatAllN2[AfrodatAllN2$nobs>=4&AfrodatAllN2$wave==4,])	
 
 
 
 #w7について
 mres_oOwn_Mbphone_w7<-update(mres_oOwn_Mbphone_w4,.~., data=AfrodatAllN2[AfrodatAllN2$nobs>=4&AfrodatAllN2$wave==7,])	
 	summary(mres_oOwn_Mbphone_w7)
-
-mres_oOwn_Mbphone_w7.1<-update(mres_oOwn_Mbphone_w4.1,.~., data=AfrodatAllN2[AfrodatAllN2$nobs>=4&AfrodatAllN2$wave==7,])	
-	summary(mres_oOwn_Mbphone_w7.1)
-
 
 mtable(mres_oOwn_Mbphone_w4,mres_oOwn_Mbphone_w7,
 	summary.stats=c("Deviance","N","AIC"),coef.style="stat")	#検定統計量を出力　coef.style="all" 係数､ses,t,p
@@ -660,6 +498,15 @@ res.cfa0<-lavaan(Model.cfa0, data=Afrodat6,auto.var=TRUE,  auto.fix.first=TRUE,a
 #多母集団
 res.cfa0g<-lavaan(Model.cfa0, data=Afrodat6,auto.var=TRUE,  auto.fix.first=TRUE,auto.fix.single=T,auto.cov.lv.x=TRUE,group="COUNTRY2")
 	summary(res.cfa0g, fit.measures=TRUE)		
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1174,6 +1021,43 @@ res2tv<-update(res2,News_Television~.)
 
 
 
+
+#-------------------------------
+dwaw.line2<-function(dat){		#datの中にあるtを横軸､yを縦軸にとってプロット｡左端に国記号　dat$t:year, dat$y, dat$cnam: country name
+	d<-dim(dat)[1]
+	lines(dat$t,dat$y)
+		text(dat$t[d],dat$y[d],dat$cnam[d],pos=4,cex=0.5)		#最後のtのところにcountry nameを
+	}
+
+#datの中にあるcnam毎にトレンドをプロット
+group_trend_plot<-function(dat,lab){
+par(mfrow=c(1,1))
+	ymin<-min2(dat$y)
+	ymax<-max2(dat$y)
+	tmax<-max2(dat$t)
+	tmin<-min2(dat$t)
+	plot(dat$t,dat$y,xlim=c(tmin,tmax),ylim=c(ymin,ymax),main=lab,xlab="Year",ylab="Mean")
+		by(dat,dat$cnam,dwaw.line2)
+	}
+
+head(m)
+#Radio
+dat<-m[,c(1:3)];names(dat)<-c("cnam","t","y")	#40-90%   w3から大きくはかわらず｡　w7では低下の国が多い(が質問方法がかわった)
+	group_trend_plot(dat,lab="Radio")
+dat<-m[,c(1:2,4)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="TV")
+
+dat<-m[,c(1:2,5)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="Newspaper")
+
+dat<-m[,c(1:2,6)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="Internet")
+
+dat<-m[,c(1:2,7)];names(dat)<-c("cnam","t","y")
+	group_trend_plot(dat,lab="Social_media ")
+
+
+#-------
 
 
 
